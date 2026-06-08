@@ -447,7 +447,7 @@ function screenBracket() {
       return `<div class="sw-tie${tbc ? ' sw-tie--tbc' : ''}">${bracketTieSide(match.homeTeam, match.homePlaceholder)}${bracketTieSide(match.awayTeam, match.awayPlaceholder)}</div>`;
     }).join('');
 
-    return `<div class="sw-bracket__col"><h3 class="sw-bracket__round">${escapeHtml(round.round)}</h3><div class="sw-bracket__ties">${ties}</div></div>`;
+    return `<details class="sw-bracket__col" open><summary class="sw-bracket__round">${escapeHtml(round.round)}</summary><div class="sw-bracket__ties">${ties}</div></details>`;
   }).join('');
 
   return `${sectionHead('Knockout bracket', 'Slots fill as the group stage finishes')}<div class="sw-bracket">${columns}</div>`;
