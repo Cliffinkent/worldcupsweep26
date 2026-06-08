@@ -1,0 +1,54 @@
+/* ============================================================
+   Sweepstake 26 — Spacing, radii, shadows, layout
+   Tight, grid-aligned. Sharp corners are the default; the only
+   soft things are pills (fully round) and the rare 6px chip.
+   ============================================================ */
+
+:root {
+  /* ---- Spacing scale (4px base) ---- */
+  --space-0: 0;
+  --space-1: 0.25rem;  /* 4 */
+  --space-2: 0.5rem;   /* 8 */
+  --space-3: 0.75rem;  /* 12 */
+  --space-4: 1rem;     /* 16 */
+  --space-5: 1.25rem;  /* 20 */
+  --space-6: 1.5rem;   /* 24 */
+  --space-8: 2rem;     /* 32 */
+  --space-10: 2.5rem;  /* 40 */
+  --space-12: 3rem;    /* 48 */
+  --space-16: 4rem;    /* 64 */
+  --space-20: 5rem;    /* 80 */
+
+  /* ---- Radii ---- (sharp brand: mostly 0 / small) */
+  --radius-none: 0px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;     /* default card/control radius */
+  --radius-lg: 10px;
+  --radius-pill: 999px; /* status pills, avatars */
+
+  /* ---- Borders ---- */
+  --border-width: 1px;
+  --border-width-bold: 2px;  /* the signature ink frame */
+
+  /* ---- Shadows ---- (used sparingly; the brand prefers borders)
+     A hard, offset "card-lift" shadow gives the sharp poster feel. */
+  --shadow-none: none;
+  --shadow-sm: 0 1px 0 rgba(21, 21, 30, 0.06);
+  --shadow-card: 0 2px 0 rgba(21, 21, 30, 0.08);
+  --shadow-hard: 4px 4px 0 var(--ink);        /* offset poster lift */
+  --shadow-hard-magenta: 4px 4px 0 var(--magenta);
+  --shadow-pop: 0 12px 28px -10px rgba(21, 21, 30, 0.32);
+
+  /* ---- Layout ---- */
+  --container-max: 1180px;
+  --container-pad: var(--space-5);
+  --header-height: 64px;
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* @kind other */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1); /* @kind other */
+  --dur-fast: 120ms; /* @kind other */
+  --dur-base: 180ms; /* @kind other */
+  --dur-slow: 320ms; /* @kind other */
+}

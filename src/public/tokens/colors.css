@@ -1,0 +1,69 @@
+/* ============================================================
+   Sweepstake 26 — Color tokens
+   A sharp, high-contrast sporting palette. Magenta does the
+   shouting; ink and paper do the talking; yellow crowns winners.
+   ============================================================ */
+
+:root {
+  /* ---- Brand base ramp ---- */
+  --magenta: #E6007E;        /* primary — headings accent, live state, CTAs */
+  --magenta-dark: #B30062;   /* hover / pressed */
+  --magenta-tint: #FCE6F2;   /* faint magenta wash for fills */
+  --yellow: #FFD200;         /* accent, highlights, winner state */
+  --yellow-dark: #E0B900;    /* yellow hover / pressed */
+  --yellow-tint: #FFF6CC;    /* faint yellow wash */
+
+  --ink: #15151E;            /* near-black — body text, header band */
+  --ink-80: #3A3A45;         /* softened ink for sub-headings */
+  --paper: #F7F7F2;          /* off-white app background */
+  --white: #FFFFFF;          /* cards, surfaces */
+  --line: #E4E2D8;           /* hairline borders */
+  --line-strong: #15151E;    /* the signature 2px ink border */
+  --muted: #6B6B73;          /* secondary text, captions */
+
+  /* ---- Semantic status ---- */
+  --alive: #1A8A4A;          /* still in — team not eliminated */
+  --alive-tint: #E2F2E8;
+  --error: #C0152F;          /* error / eliminated */
+  --error-tint: #FBE7EA;
+  --live: #E6007E;           /* live match pulse (reuses magenta) */
+
+  /* ============================================================
+     Semantic aliases — reference these in components
+     ============================================================ */
+
+  /* Surfaces */
+  --surface-page: var(--paper);
+  --surface-card: var(--white);
+  --surface-raised: var(--white);
+  --surface-ink: var(--ink);          /* dark band / header / footer */
+  --surface-magenta: var(--magenta);
+  --surface-fill-magenta: var(--magenta-tint);
+  --surface-fill-yellow: var(--yellow-tint);
+  --surface-fill-alive: var(--alive-tint);
+  --surface-fill-error: var(--error-tint);
+
+  /* Text */
+  --text-strong: var(--ink);
+  --text-body: var(--ink);
+  --text-muted: var(--muted);
+  --text-on-ink: var(--paper);
+  --text-on-magenta: var(--white);
+  --text-on-yellow: var(--ink);
+  --text-accent: var(--magenta);
+  --text-link: var(--magenta);
+
+  /* Borders */
+  --border-hairline: var(--line);
+  --border-ink: var(--ink);
+  --border-accent: var(--magenta);
+
+  /* Status text/borders */
+  --status-alive: var(--alive);
+  --status-out: var(--error);
+  --status-live: var(--magenta);
+  --status-winner: var(--yellow);
+
+  /* Focus ring */
+  --focus-ring: var(--magenta);
+}
