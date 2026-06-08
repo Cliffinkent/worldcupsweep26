@@ -1,0 +1,386 @@
+[
+  {
+    "country": "Czechia",
+    "slug": "czechia",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/czechia.svg",
+      "20x15": "/assets/flags/20x15/czechia.svg"
+    }
+  },
+  {
+    "country": "South Korea",
+    "slug": "south-korea",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/south-korea.svg",
+      "20x15": "/assets/flags/20x15/south-korea.svg"
+    }
+  },
+  {
+    "country": "South Africa",
+    "slug": "south-africa",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/south-africa.svg",
+      "20x15": "/assets/flags/20x15/south-africa.svg"
+    }
+  },
+  {
+    "country": "Mexico",
+    "slug": "mexico",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/mexico.svg",
+      "20x15": "/assets/flags/20x15/mexico.svg"
+    }
+  },
+  {
+    "country": "Canada",
+    "slug": "canada",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/canada.svg",
+      "20x15": "/assets/flags/20x15/canada.svg"
+    }
+  },
+  {
+    "country": "Bosnia and Herzegovina",
+    "slug": "bosnia-and-herzegovina",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/bosnia-and-herzegovina.svg",
+      "20x15": "/assets/flags/20x15/bosnia-and-herzegovina.svg"
+    }
+  },
+  {
+    "country": "Qatar",
+    "slug": "qatar",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/qatar.svg",
+      "20x15": "/assets/flags/20x15/qatar.svg"
+    }
+  },
+  {
+    "country": "Switzerland",
+    "slug": "switzerland",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/switzerland.svg",
+      "20x15": "/assets/flags/20x15/switzerland.svg"
+    }
+  },
+  {
+    "country": "Brazil",
+    "slug": "brazil",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/brazil.svg",
+      "20x15": "/assets/flags/20x15/brazil.svg"
+    }
+  },
+  {
+    "country": "Morocco",
+    "slug": "morocco",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/morocco.svg",
+      "20x15": "/assets/flags/20x15/morocco.svg"
+    }
+  },
+  {
+    "country": "Haiti",
+    "slug": "haiti",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/haiti.svg",
+      "20x15": "/assets/flags/20x15/haiti.svg"
+    }
+  },
+  {
+    "country": "Scotland",
+    "slug": "scotland",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/scotland.svg",
+      "20x15": "/assets/flags/20x15/scotland.svg"
+    }
+  },
+  {
+    "country": "United States",
+    "slug": "united-states",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/united-states.svg",
+      "20x15": "/assets/flags/20x15/united-states.svg"
+    }
+  },
+  {
+    "country": "Paraguay",
+    "slug": "paraguay",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/paraguay.svg",
+      "20x15": "/assets/flags/20x15/paraguay.svg"
+    }
+  },
+  {
+    "country": "Australia",
+    "slug": "australia",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/australia.svg",
+      "20x15": "/assets/flags/20x15/australia.svg"
+    }
+  },
+  {
+    "country": "Türkiye",
+    "slug": "turkiye",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/turkiye.svg",
+      "20x15": "/assets/flags/20x15/turkiye.svg"
+    }
+  },
+  {
+    "country": "Germany",
+    "slug": "germany",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/germany.svg",
+      "20x15": "/assets/flags/20x15/germany.svg"
+    }
+  },
+  {
+    "country": "Curaçao",
+    "slug": "curacao",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/curacao.svg",
+      "20x15": "/assets/flags/20x15/curacao.svg"
+    }
+  },
+  {
+    "country": "Côte d’Ivoire",
+    "slug": "cote-d-ivoire",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/cote-d-ivoire.svg",
+      "20x15": "/assets/flags/20x15/cote-d-ivoire.svg"
+    }
+  },
+  {
+    "country": "Ecuador",
+    "slug": "ecuador",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/ecuador.svg",
+      "20x15": "/assets/flags/20x15/ecuador.svg"
+    }
+  },
+  {
+    "country": "Netherlands",
+    "slug": "netherlands",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/netherlands.svg",
+      "20x15": "/assets/flags/20x15/netherlands.svg"
+    }
+  },
+  {
+    "country": "Japan",
+    "slug": "japan",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/japan.svg",
+      "20x15": "/assets/flags/20x15/japan.svg"
+    }
+  },
+  {
+    "country": "Sweden",
+    "slug": "sweden",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/sweden.svg",
+      "20x15": "/assets/flags/20x15/sweden.svg"
+    }
+  },
+  {
+    "country": "Tunisia",
+    "slug": "tunisia",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/tunisia.svg",
+      "20x15": "/assets/flags/20x15/tunisia.svg"
+    }
+  },
+  {
+    "country": "Belgium",
+    "slug": "belgium",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/belgium.svg",
+      "20x15": "/assets/flags/20x15/belgium.svg"
+    }
+  },
+  {
+    "country": "Egypt",
+    "slug": "egypt",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/egypt.svg",
+      "20x15": "/assets/flags/20x15/egypt.svg"
+    }
+  },
+  {
+    "country": "Iran",
+    "slug": "iran",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/iran.svg",
+      "20x15": "/assets/flags/20x15/iran.svg"
+    }
+  },
+  {
+    "country": "New Zealand",
+    "slug": "new-zealand",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/new-zealand.svg",
+      "20x15": "/assets/flags/20x15/new-zealand.svg"
+    }
+  },
+  {
+    "country": "Spain",
+    "slug": "spain",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/spain.svg",
+      "20x15": "/assets/flags/20x15/spain.svg"
+    }
+  },
+  {
+    "country": "Cape Verde",
+    "slug": "cape-verde",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/cape-verde.svg",
+      "20x15": "/assets/flags/20x15/cape-verde.svg"
+    }
+  },
+  {
+    "country": "Saudi Arabia",
+    "slug": "saudi-arabia",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/saudi-arabia.svg",
+      "20x15": "/assets/flags/20x15/saudi-arabia.svg"
+    }
+  },
+  {
+    "country": "Uruguay",
+    "slug": "uruguay",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/uruguay.svg",
+      "20x15": "/assets/flags/20x15/uruguay.svg"
+    }
+  },
+  {
+    "country": "France",
+    "slug": "france",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/france.svg",
+      "20x15": "/assets/flags/20x15/france.svg"
+    }
+  },
+  {
+    "country": "Senegal",
+    "slug": "senegal",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/senegal.svg",
+      "20x15": "/assets/flags/20x15/senegal.svg"
+    }
+  },
+  {
+    "country": "Iraq",
+    "slug": "iraq",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/iraq.svg",
+      "20x15": "/assets/flags/20x15/iraq.svg"
+    }
+  },
+  {
+    "country": "Norway",
+    "slug": "norway",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/norway.svg",
+      "20x15": "/assets/flags/20x15/norway.svg"
+    }
+  },
+  {
+    "country": "Argentina",
+    "slug": "argentina",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/argentina.svg",
+      "20x15": "/assets/flags/20x15/argentina.svg"
+    }
+  },
+  {
+    "country": "Algeria",
+    "slug": "algeria",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/algeria.svg",
+      "20x15": "/assets/flags/20x15/algeria.svg"
+    }
+  },
+  {
+    "country": "Austria",
+    "slug": "austria",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/austria.svg",
+      "20x15": "/assets/flags/20x15/austria.svg"
+    }
+  },
+  {
+    "country": "Jordan",
+    "slug": "jordan",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/jordan.svg",
+      "20x15": "/assets/flags/20x15/jordan.svg"
+    }
+  },
+  {
+    "country": "Portugal",
+    "slug": "portugal",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/portugal.svg",
+      "20x15": "/assets/flags/20x15/portugal.svg"
+    }
+  },
+  {
+    "country": "DR Congo",
+    "slug": "dr-congo",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/dr-congo.svg",
+      "20x15": "/assets/flags/20x15/dr-congo.svg"
+    }
+  },
+  {
+    "country": "Uzbekistan",
+    "slug": "uzbekistan",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/uzbekistan.svg",
+      "20x15": "/assets/flags/20x15/uzbekistan.svg"
+    }
+  },
+  {
+    "country": "Colombia",
+    "slug": "colombia",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/colombia.svg",
+      "20x15": "/assets/flags/20x15/colombia.svg"
+    }
+  },
+  {
+    "country": "England",
+    "slug": "england",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/england.svg",
+      "20x15": "/assets/flags/20x15/england.svg"
+    }
+  },
+  {
+    "country": "Croatia",
+    "slug": "croatia",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/croatia.svg",
+      "20x15": "/assets/flags/20x15/croatia.svg"
+    }
+  },
+  {
+    "country": "Ghana",
+    "slug": "ghana",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/ghana.svg",
+      "20x15": "/assets/flags/20x15/ghana.svg"
+    }
+  },
+  {
+    "country": "Panama",
+    "slug": "panama",
+    "sizes": {
+      "24x18": "/assets/flags/24x18/panama.svg",
+      "20x15": "/assets/flags/20x15/panama.svg"
+    }
+  }
+]

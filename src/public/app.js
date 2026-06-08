@@ -12,6 +12,9 @@ const elements = {
   lastUpdated: document.querySelector('#last-updated'),
   providerStatus: document.querySelector('#provider-status')
 };
+const flagSlugOverrides = {
+  'cote-divoire': 'cote-d-ivoire'
+};
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -79,12 +82,31 @@ function buildTeamLookup(teams) {
   return lookup;
 }
 
+function getFlagSlug(teamId) {
+  return flagSlugOverrides[teamId] || teamId;
+}
+
+function renderFlag(team, size = '20x15') {
+  const teamId = team?.id || team?.teamId;
+
+  if (!teamId) {
+    return '';
+  }
+
+  const className = size === '24x18' ? 'flag-img flag-fixture' : 'flag-img flag-small';
+  const src = `/assets/flags/${size}/${getFlagSlug(teamId)}.svg`;
+  const alt = `${team.country || team.name || 'Team'} flag`;
+
+  return `<img class="${className}" src="${escapeHtml(src)}" alt="${escapeHtml(alt)}">`;
+}
+
 function getFixtureTeam(lookup, apiName) {
   const localTeam = lookup.get(normaliseTeamName(apiName));
 
   return {
+    id: localTeam?.id || null,
     name: localTeam?.country || apiName || 'TBC',
-    flag: localTeam?.flag || '',
+    country: localTeam?.country || apiName || 'TBC',
     owner: localTeam?.owner || ''
   };
 }
@@ -129,7 +151,7 @@ function renderGroups(data) {
         <tbody>
           ${group.table.map((row) => `
             <tr>
-              <td>${escapeHtml(row.flag)} ${escapeHtml(row.country)}<br><small>${escapeHtml(row.owner)}</small></td>
+              <td>${renderFlag(row)} ${escapeHtml(row.country)}<br><small>${escapeHtml(row.owner)}</small></td>
               <td>${row.played}</td>
               <td>${row.goalDifference}</td>
               <td>${row.points}</td>
@@ -163,12 +185,12 @@ function renderFixtures(data) {
           <div class="match">
             <div class="fixture-teams">
               <div class="fixture-team fixture-team-home">
-                <div class="fixture-team-name">${escapeHtml(homeTeam.flag)} ${escapeHtml(homeTeam.name)}</div>
+                <div class="fixture-team-name">${renderFlag(homeTeam, '24x18')} ${escapeHtml(homeTeam.name)}</div>
                 <small>${escapeHtml(homeTeam.owner || 'Unassigned')}</small>
               </div>
               <div class="fixture-score">${escapeHtml(score)}</div>
               <div class="fixture-team fixture-team-away">
-                <div class="fixture-team-name">${escapeHtml(awayTeam.name)} ${escapeHtml(awayTeam.flag)}</div>
+                <div class="fixture-team-name">${escapeHtml(awayTeam.name)} ${renderFlag(awayTeam, '24x18')}</div>
                 <small>${escapeHtml(awayTeam.owner || 'Unassigned')}</small>
               </div>
             </div>
@@ -216,10 +238,10 @@ function renderPlayers(data) {
         ${data.players.map((player) => `
           <tr>
             <td>${escapeHtml(player.owner)}</td>
-            <td>${(player.teams || player.assignedTeams).map((team) => `${escapeHtml(team.flag)} ${escapeHtml(team.country)}`).join('<br>')}</td>
+            <td>${(player.teams || player.assignedTeams).map((team) => `${renderFlag(team)} ${escapeHtml(team.country)}`).join('<br>')}</td>
             <td>${player.totalGroupPoints}</td>
             <td>${player.teamsStillAlive}</td>
-            <td>${player.bestTeam ? `${escapeHtml(player.bestTeam.flag)} ${escapeHtml(player.bestTeam.country)} (${player.bestTeam.points})` : '-'}</td>
+            <td>${player.bestTeam ? `${renderFlag(player.bestTeam)} ${escapeHtml(player.bestTeam.country)} (${player.bestTeam.points})` : '-'}</td>
             <td>${player.liveTeamsPlayingToday ?? 0}</td>
           </tr>
         `).join('')}

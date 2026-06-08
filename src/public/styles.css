@@ -104,6 +104,22 @@ th {
   background: #eee;
 }
 
+.flag-img {
+  display: inline-block;
+  object-fit: cover;
+  vertical-align: -2px;
+}
+
+.flag-small {
+  width: 20px;
+  height: 15px;
+}
+
+.flag-fixture {
+  width: 24px;
+  height: 18px;
+}
+
 .team-list,
 .match-list {
   margin: 0;
