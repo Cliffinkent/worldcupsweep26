@@ -2,3 +2,7 @@
 node_modules/
 diagnostics/api-football/*.sample.json
 .DS_Store
+
+# Design source bundles (the needed assets are copied into src/public/)
+Design-system/
+wc-flags/
