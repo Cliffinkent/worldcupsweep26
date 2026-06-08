@@ -1,14 +1,24 @@
+const OWNER_STORAGE_KEY = 'sw26.owner';
+
 const state = {
   data: null,
   screen: 'leaderboard',
   openOwner: null,
+  filterOwner: null,
   teamIndex: null,
   teamIndexFor: null
 };
 
+try {
+  state.filterOwner = localStorage.getItem(OWNER_STORAGE_KEY) || null;
+} catch (error) {
+  state.filterOwner = null;
+}
+
 const elements = {
   screen: document.querySelector('#screen'),
   tabs: document.querySelector('#tabs'),
+  ownerFilter: document.querySelector('#owner-filter'),
   refreshButton: document.querySelector('#refresh-button'),
   liveIndicator: document.querySelector('#live-indicator'),
   liveCount: document.querySelector('#live-count'),
@@ -223,6 +233,19 @@ function getLiveCount() {
   return count;
 }
 
+function ownsTeam(team) {
+  return Boolean(state.filterOwner) && team && team.owner === state.filterOwner;
+}
+
+function matchInvolvesOwner(match) {
+  if (!state.filterOwner) {
+    return true;
+  }
+
+  return getFixtureTeam(match.homeTeam).owner === state.filterOwner
+    || getFixtureTeam(match.awayTeam).owner === state.filterOwner;
+}
+
 /* ---------- Primitives (vanilla ports of the design-system components) ---------- */
 
 const AVATAR_PALETTE_SIZE = 6;
@@ -296,6 +319,25 @@ function sectionHead(title, meta) {
 
 /* ---------- Screens ---------- */
 
+function ownerHero(player, rank) {
+  const teams = player.teams || player.assignedTeams || [];
+  const flags = teams.map((team) => renderFlag(team, 24)).join('');
+
+  return `<div class="sw-hero">
+    <div class="sw-hero__top">
+      ${avatar(player.owner, 'lg')}
+      <div class="sw-hero__id"><span class="sw-hero__hi">${escapeHtml(player.owner)}</span><span class="sw-hero__sub">Your sweepstake</span></div>
+      <div class="sw-hero__rank"><b>${rank}</b><i>rank</i></div>
+    </div>
+    <div class="sw-hero__stats">
+      <div class="sw-hero__stat"><b>${player.totalGroupPoints}</b><span>Points</span></div>
+      <div class="sw-hero__stat"><b>${player.teamsStillAlive}</b><span>Still in</span></div>
+      <div class="sw-hero__stat"><b>${teams.length}</b><span>Teams</span></div>
+    </div>
+    <div class="sw-hero__teams">${flags}</div>
+  </div>`;
+}
+
 function screenLeaderboard() {
   const players = state.data.players || [];
 
@@ -306,6 +348,11 @@ function screenLeaderboard() {
   const eliminated = getEliminatedTeamIds();
   const leader = players[0];
   const liveCount = getLiveCount();
+
+  const filteredIndex = state.filterOwner
+    ? players.findIndex((player) => player.owner === state.filterOwner)
+    : -1;
+  const hero = filteredIndex >= 0 ? ownerHero(players[filteredIndex], filteredIndex + 1) : '';
 
   const stats = [
     statCard({ value: (state.data.teams || []).length, label: 'Teams in play' }),
@@ -333,7 +380,9 @@ function screenLeaderboard() {
       })
       .join('');
 
-    return `<div class="sw-rowcard${rank === 1 ? ' sw-rowcard--lead' : ''}${open ? ' is-open' : ''}" data-owner="${escapeHtml(player.owner)}">
+    const mine = player.owner === state.filterOwner;
+
+    return `<div class="sw-rowcard${rank === 1 ? ' sw-rowcard--lead' : ''}${mine ? ' sw-rowcard--you' : ''}${open ? ' is-open' : ''}" data-owner="${escapeHtml(player.owner)}">
       <button class="sw-rowcard__main" type="button">
         <span class="sw-rank">${rank === 1 ? '🏆' : rank}</span>
         ${avatar(player.owner, 'md')}
@@ -347,7 +396,7 @@ function screenLeaderboard() {
     </div>`;
   }).join('');
 
-  return `<div class="sw-overview">${stats}</div>${sectionHead('Leaderboard', 'Group points · ties broken by teams still in')}<div class="sw-board">${board}</div>`;
+  return `${hero}<div class="sw-overview">${stats}</div>${sectionHead('Leaderboard', 'Group points · ties broken by teams still in')}<div class="sw-board">${board}</div>`;
 }
 
 function screenGroups() {
@@ -356,7 +405,8 @@ function screenGroups() {
   const tables = groups.map((group) => {
     const rows = group.table.map((team, index) => {
       const qualifying = index < 2;
-      return `<div class="sw-group__row${qualifying ? ' sw-group__row--q' : ''}">
+      const mine = ownsTeam(team);
+      return `<div class="sw-group__row${qualifying ? ' sw-group__row--q' : ''}${mine ? ' sw-group__row--mine' : ''}">
         <span class="sw-group__team"><span class="sw-group__pos">${index + 1}</span>${teamChip({
         country: team.country,
         flag: renderFlag(team, 20),
@@ -415,10 +465,18 @@ function fixtureRow(match) {
 }
 
 function screenFixtures() {
-  const days = state.data.fixtures || [];
+  let days = state.data.fixtures || [];
+  const meta = state.filterOwner ? `${state.filterOwner}'s matches` : 'Owners shown above each nation';
+
+  if (state.filterOwner) {
+    days = days
+      .map((day) => ({ date: day.date, matches: day.matches.filter(matchInvolvesOwner) }))
+      .filter((day) => day.matches.length);
+  }
 
   if (!days.length) {
-    return `${sectionHead('Fixtures', 'Owners shown above each nation')}<p class="empty">No fixtures loaded yet.</p>`;
+    const empty = state.filterOwner ? `No matches for ${escapeHtml(state.filterOwner)}.` : 'No fixtures loaded yet.';
+    return `${sectionHead('Fixtures', meta)}<p class="empty">${empty}</p>`;
   }
 
   const list = days.map((day) => `<section class="sw-day">
@@ -426,7 +484,7 @@ function screenFixtures() {
     <div class="sw-day__list">${day.matches.map(fixtureRow).join('')}</div>
   </section>`).join('');
 
-  return `${sectionHead('Fixtures', 'Owners shown above each nation')}${list}`;
+  return `${sectionHead('Fixtures', meta)}${list}`;
 }
 
 function bracketTieSide(name, placeholder) {
@@ -444,7 +502,9 @@ function screenBracket() {
   const columns = rounds.map((round) => {
     const ties = round.matches.map((match) => {
       const tbc = !match.homeTeam && !match.awayTeam;
-      return `<div class="sw-tie${tbc ? ' sw-tie--tbc' : ''}">${bracketTieSide(match.homeTeam, match.homePlaceholder)}${bracketTieSide(match.awayTeam, match.awayPlaceholder)}</div>`;
+      const mine = (match.homeTeam && getFixtureTeam(match.homeTeam).owner === state.filterOwner)
+        || (match.awayTeam && getFixtureTeam(match.awayTeam).owner === state.filterOwner);
+      return `<div class="sw-tie${tbc ? ' sw-tie--tbc' : ''}${mine ? ' sw-tie--mine' : ''}">${bracketTieSide(match.homeTeam, match.homePlaceholder)}${bracketTieSide(match.awayTeam, match.awayPlaceholder)}</div>`;
     }).join('');
 
     return `<details class="sw-bracket__col" open><summary class="sw-bracket__round">${escapeHtml(round.round)}</summary><div class="sw-bracket__ties">${ties}</div></details>`;
@@ -480,6 +540,20 @@ function updateFooter(data) {
   elements.providerStatus.textContent = provider ? provider.providerStatus : 'unknown';
 }
 
+function populateOwnerFilter() {
+  const owners = Array.from(new Set((state.data.players || []).map((player) => player.owner)))
+    .sort((a, b) => a.localeCompare(b));
+
+  if (state.filterOwner && !owners.includes(state.filterOwner)) {
+    state.filterOwner = null;
+  }
+
+  const options = ['<option value="">All players</option>']
+    .concat(owners.map((owner) => `<option value="${escapeHtml(owner)}"${owner === state.filterOwner ? ' selected' : ''}>${escapeHtml(owner)}</option>`));
+
+  elements.ownerFilter.innerHTML = options.join('');
+}
+
 function renderScreen() {
   const build = SCREENS[state.screen] || screenLeaderboard;
   elements.screen.innerHTML = build();
@@ -499,6 +573,7 @@ function render(data) {
 
   updateLive();
   updateFooter(data);
+  populateOwnerFilter();
   renderScreen();
 }
 
@@ -569,6 +644,22 @@ elements.screen.addEventListener('click', (event) => {
   } else {
     state.openOwner = null;
   }
+});
+
+elements.ownerFilter.addEventListener('change', (event) => {
+  state.filterOwner = event.target.value || null;
+
+  try {
+    if (state.filterOwner) {
+      localStorage.setItem(OWNER_STORAGE_KEY, state.filterOwner);
+    } else {
+      localStorage.removeItem(OWNER_STORAGE_KEY);
+    }
+  } catch (error) {
+    /* localStorage unavailable — filter still works for the session */
+  }
+
+  renderScreen();
 });
 
 elements.refreshButton.addEventListener('click', refreshSweepstake);
