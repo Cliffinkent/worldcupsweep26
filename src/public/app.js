@@ -6,7 +6,9 @@ const state = {
   openOwner: null,
   filterOwner: null,
   teamIndex: null,
-  teamIndexFor: null
+  teamIndexFor: null,
+  fixtureStats: null,
+  fixtureStatsFor: null
 };
 
 try {
@@ -154,8 +156,12 @@ function resolveIso(team) {
 
   const name = team.country || team.name;
 
-  if (name && byName.has(normaliseTeamName(name))) {
-    return byName.get(normaliseTeamName(name)).iso;
+  if (name) {
+    const match = byName.get(normaliseTeamName(name));
+
+    if (match) {
+      return match.iso;
+    }
   }
 
   return null;
@@ -188,12 +194,23 @@ function getFixtureTeam(apiName) {
   };
 }
 
-function getEliminatedTeamIds() {
+/* Single memoised pass over the fixtures tree (keyed on the loaded payload)
+   produces both the eliminated-team set and the live-match count. */
+function getFixtureStats() {
+  if (state.fixtureStats && state.fixtureStatsFor === state.data) {
+    return state.fixtureStats;
+  }
+
   const { byName } = getTeamIndex();
   const eliminated = new Set();
+  let liveCount = 0;
 
   (state.data?.fixtures || []).forEach((day) => {
-    day.matches.forEach((match) => {
+    (day.matches || []).forEach((match) => {
+      if (match.status === 'live') {
+        liveCount += 1;
+      }
+
       if (match.status !== 'finished' || !KNOCKOUT_ROUNDS.has(match.round) || !match.winner) {
         return;
       }
@@ -216,21 +233,17 @@ function getEliminatedTeamIds() {
     });
   });
 
-  return eliminated;
+  state.fixtureStats = { eliminated, liveCount };
+  state.fixtureStatsFor = state.data;
+  return state.fixtureStats;
+}
+
+function getEliminatedTeamIds() {
+  return getFixtureStats().eliminated;
 }
 
 function getLiveCount() {
-  let count = 0;
-
-  (state.data?.fixtures || []).forEach((day) => {
-    day.matches.forEach((match) => {
-      if (match.status === 'live') {
-        count += 1;
-      }
-    });
-  });
-
-  return count;
+  return getFixtureStats().liveCount;
 }
 
 function ownsTeam(team) {
