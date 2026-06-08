@@ -70,45 +70,19 @@ p {
 
 .page-header__tag {
   margin: 0;
-  font-size: var(--text-sm);
-  color: rgba(247, 247, 242, 0.7);
-}
-
-/* Wordmark: magenta "26" block locked to a two-line SWEEP / STAKE */
-.wordmark {
-  display: inline-flex;
-  align-items: stretch;
-  border: var(--border-width-bold) solid var(--paper);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.wordmark__num {
-  display: flex;
-  align-items: center;
-  padding: 7px 10px 5px;
-  background: var(--magenta);
-  color: var(--white);
-  font-family: var(--font-display);
-  font-size: 30px;
-  line-height: 1;
-}
-
-.wordmark__word {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 4px 11px;
-  background: var(--ink);
-  color: var(--paper);
-  font-family: var(--font-display);
-  font-size: 19px;
-  line-height: 1.02;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-eyebrow);
   text-transform: uppercase;
+  color: var(--magenta);
 }
 
-.wordmark__word span:last-child {
-  color: var(--magenta);
+/* Primary logo: bracket mark + Anton wordmark lockup */
+.brand-mark {
+  display: block;
+  width: 40px;
+  height: 40px;
+  flex: none;
 }
 
 /* ---------- Layout ---------- */
