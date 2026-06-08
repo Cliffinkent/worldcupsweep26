@@ -5,6 +5,7 @@ const sweepstakeTeams = [
     owner: 'Amy',
     country: 'Czechia',
     flag: '🇨🇿',
+    iso: 'cz',
     fifaName: 'Czechia',
     aliases: ['Czechia', 'Czech Republic']
   },
@@ -14,6 +15,7 @@ const sweepstakeTeams = [
     owner: 'Barry',
     country: 'South Korea',
     flag: '🇰🇷',
+    iso: 'kr',
     fifaName: 'Korea Republic',
     aliases: ['South Korea', 'Korea Republic', 'Republic of Korea']
   },
@@ -23,6 +25,7 @@ const sweepstakeTeams = [
     owner: 'Dawn',
     country: 'South Africa',
     flag: '🇿🇦',
+    iso: 'za',
     fifaName: 'South Africa',
     aliases: ['South Africa']
   },
@@ -32,6 +35,7 @@ const sweepstakeTeams = [
     owner: 'Marion',
     country: 'Mexico',
     flag: '🇲🇽',
+    iso: 'mx',
     fifaName: 'Mexico',
     aliases: ['Mexico']
   },
@@ -41,6 +45,7 @@ const sweepstakeTeams = [
     owner: 'Adam',
     country: 'Canada',
     flag: '🇨🇦',
+    iso: 'ca',
     fifaName: 'Canada',
     aliases: ['Canada']
   },
@@ -50,6 +55,7 @@ const sweepstakeTeams = [
     owner: 'Chris',
     country: 'Bosnia and Herzegovina',
     flag: '🇧🇦',
+    iso: 'ba',
     fifaName: 'Bosnia and Herzegovina',
     aliases: ['Bosnia and Herzegovina', 'Bosnia & Herzegovina', 'Bosnia-Herzegovina', 'Bosnia']
   },
@@ -59,6 +65,7 @@ const sweepstakeTeams = [
     owner: 'Jason O',
     country: 'Qatar',
     flag: '🇶🇦',
+    iso: 'qa',
     fifaName: 'Qatar',
     aliases: ['Qatar']
   },
@@ -68,6 +75,7 @@ const sweepstakeTeams = [
     owner: 'Barry',
     country: 'Switzerland',
     flag: '🇨🇭',
+    iso: 'ch',
     fifaName: 'Switzerland',
     aliases: ['Switzerland']
   },
@@ -77,6 +85,7 @@ const sweepstakeTeams = [
     owner: 'Ann',
     country: 'Brazil',
     flag: '🇧🇷',
+    iso: 'br',
     fifaName: 'Brazil',
     aliases: ['Brazil']
   },
@@ -86,6 +95,7 @@ const sweepstakeTeams = [
     owner: 'Laura',
     country: 'Morocco',
     flag: '🇲🇦',
+    iso: 'ma',
     fifaName: 'Morocco',
     aliases: ['Morocco']
   },
@@ -95,6 +105,7 @@ const sweepstakeTeams = [
     owner: 'Dawn',
     country: 'Haiti',
     flag: '🇭🇹',
+    iso: 'ht',
     fifaName: 'Haiti',
     aliases: ['Haiti']
   },
@@ -104,6 +115,7 @@ const sweepstakeTeams = [
     owner: 'Tina',
     country: 'Scotland',
     flag: '🏴',
+    iso: 'gb-sct',
     fifaName: 'Scotland',
     aliases: ['Scotland']
   },
@@ -113,6 +125,7 @@ const sweepstakeTeams = [
     owner: 'Tina',
     country: 'United States',
     flag: '🇺🇸',
+    iso: 'us',
     fifaName: 'United States',
     aliases: ['United States', 'USA', 'USMNT', 'United States of America']
   },
@@ -122,6 +135,7 @@ const sweepstakeTeams = [
     owner: 'Carolyn',
     country: 'Paraguay',
     flag: '🇵🇾',
+    iso: 'py',
     fifaName: 'Paraguay',
     aliases: ['Paraguay']
   },
@@ -131,6 +145,7 @@ const sweepstakeTeams = [
     owner: 'Blaine',
     country: 'Australia',
     flag: '🇦🇺',
+    iso: 'au',
     fifaName: 'Australia',
     aliases: ['Australia']
   },
@@ -140,6 +155,7 @@ const sweepstakeTeams = [
     owner: 'Blaine',
     country: 'Türkiye',
     flag: '🇹🇷',
+    iso: 'tr',
     fifaName: 'Türkiye',
     aliases: ['Türkiye', 'Turkey', 'Turkiye']
   },
@@ -149,6 +165,7 @@ const sweepstakeTeams = [
     owner: 'Jason O',
     country: 'Germany',
     flag: '🇩🇪',
+    iso: 'de',
     fifaName: 'Germany',
     aliases: ['Germany']
   },
@@ -158,6 +175,7 @@ const sweepstakeTeams = [
     owner: 'Ann',
     country: 'Curaçao',
     flag: '🇨🇼',
+    iso: 'cw',
     fifaName: 'Curaçao',
     aliases: ['Curaçao', 'Curacao']
   },
@@ -167,6 +185,7 @@ const sweepstakeTeams = [
     owner: 'Jason P',
     country: 'Côte d’Ivoire',
     flag: '🇨🇮',
+    iso: 'ci',
     fifaName: 'Côte d’Ivoire',
     aliases: ['Côte d’Ivoire', "Cote d'Ivoire", 'Ivory Coast', 'Cote d Ivoire']
   },
@@ -176,6 +195,7 @@ const sweepstakeTeams = [
     owner: 'Laura',
     country: 'Ecuador',
     flag: '🇪🇨',
+    iso: 'ec',
     fifaName: 'Ecuador',
     aliases: ['Ecuador']
   },
@@ -185,6 +205,7 @@ const sweepstakeTeams = [
     owner: 'Marion',
     country: 'Netherlands',
     flag: '🇳🇱',
+    iso: 'nl',
     fifaName: 'Netherlands',
     aliases: ['Netherlands', 'Holland']
   },
@@ -194,6 +215,7 @@ const sweepstakeTeams = [
     owner: 'Carolyn',
     country: 'Japan',
     flag: '🇯🇵',
+    iso: 'jp',
     fifaName: 'Japan',
     aliases: ['Japan']
   },
@@ -203,6 +225,7 @@ const sweepstakeTeams = [
     owner: 'Kelly',
     country: 'Sweden',
     flag: '🇸🇪',
+    iso: 'se',
     fifaName: 'Sweden',
     aliases: ['Sweden']
   },
@@ -212,6 +235,7 @@ const sweepstakeTeams = [
     owner: 'Christina',
     country: 'Tunisia',
     flag: '🇹🇳',
+    iso: 'tn',
     fifaName: 'Tunisia',
     aliases: ['Tunisia']
   },
@@ -221,6 +245,7 @@ const sweepstakeTeams = [
     owner: 'Tod',
     country: 'Belgium',
     flag: '🇧🇪',
+    iso: 'be',
     fifaName: 'Belgium',
     aliases: ['Belgium']
   },
@@ -230,6 +255,7 @@ const sweepstakeTeams = [
     owner: 'Sophie',
     country: 'Egypt',
     flag: '🇪🇬',
+    iso: 'eg',
     fifaName: 'Egypt',
     aliases: ['Egypt']
   },
@@ -239,6 +265,7 @@ const sweepstakeTeams = [
     owner: 'Sophie',
     country: 'Iran',
     flag: '🇮🇷',
+    iso: 'ir',
     fifaName: 'Iran',
     aliases: ['Iran', 'IR Iran']
   },
@@ -248,6 +275,7 @@ const sweepstakeTeams = [
     owner: 'Cliff',
     country: 'New Zealand',
     flag: '🇳🇿',
+    iso: 'nz',
     fifaName: 'New Zealand',
     aliases: ['New Zealand']
   },
@@ -257,6 +285,7 @@ const sweepstakeTeams = [
     owner: 'Rachael',
     country: 'Spain',
     flag: '🇪🇸',
+    iso: 'es',
     fifaName: 'Spain',
     aliases: ['Spain']
   },
@@ -266,6 +295,7 @@ const sweepstakeTeams = [
     owner: 'Amy',
     country: 'Cape Verde',
     flag: '🇨🇻',
+    iso: 'cv',
     fifaName: 'Cape Verde',
     aliases: ['Cape Verde', 'Cape Verde Islands', 'Cabo Verde']
   },
@@ -275,6 +305,7 @@ const sweepstakeTeams = [
     owner: 'Ian',
     country: 'Saudi Arabia',
     flag: '🇸🇦',
+    iso: 'sa',
     fifaName: 'Saudi Arabia',
     aliases: ['Saudi Arabia']
   },
@@ -284,6 +315,7 @@ const sweepstakeTeams = [
     owner: 'Marc',
     country: 'Uruguay',
     flag: '🇺🇾',
+    iso: 'uy',
     fifaName: 'Uruguay',
     aliases: ['Uruguay']
   },
@@ -293,6 +325,7 @@ const sweepstakeTeams = [
     owner: 'Christina',
     country: 'France',
     flag: '🇫🇷',
+    iso: 'fr',
     fifaName: 'France',
     aliases: ['France']
   },
@@ -302,6 +335,7 @@ const sweepstakeTeams = [
     owner: 'Marc',
     country: 'Senegal',
     flag: '🇸🇳',
+    iso: 'sn',
     fifaName: 'Senegal',
     aliases: ['Senegal']
   },
@@ -311,6 +345,7 @@ const sweepstakeTeams = [
     owner: 'Andre',
     country: 'Iraq',
     flag: '🇮🇶',
+    iso: 'iq',
     fifaName: 'Iraq',
     aliases: ['Iraq']
   },
@@ -320,6 +355,7 @@ const sweepstakeTeams = [
     owner: 'Rachael',
     country: 'Norway',
     flag: '🇳🇴',
+    iso: 'no',
     fifaName: 'Norway',
     aliases: ['Norway']
   },
@@ -329,6 +365,7 @@ const sweepstakeTeams = [
     owner: 'Chris',
     country: 'Argentina',
     flag: '🇦🇷',
+    iso: 'ar',
     fifaName: 'Argentina',
     aliases: ['Argentina']
   },
@@ -338,6 +375,7 @@ const sweepstakeTeams = [
     owner: 'Tod',
     country: 'Algeria',
     flag: '🇩🇿',
+    iso: 'dz',
     fifaName: 'Algeria',
     aliases: ['Algeria']
   },
@@ -347,6 +385,7 @@ const sweepstakeTeams = [
     owner: 'Jason P',
     country: 'Austria',
     flag: '🇦🇹',
+    iso: 'at',
     fifaName: 'Austria',
     aliases: ['Austria']
   },
@@ -356,6 +395,7 @@ const sweepstakeTeams = [
     owner: 'Cliff',
     country: 'Jordan',
     flag: '🇯🇴',
+    iso: 'jo',
     fifaName: 'Jordan',
     aliases: ['Jordan']
   },
@@ -365,6 +405,7 @@ const sweepstakeTeams = [
     owner: 'Andre',
     country: 'Portugal',
     flag: '🇵🇹',
+    iso: 'pt',
     fifaName: 'Portugal',
     aliases: ['Portugal']
   },
@@ -374,7 +415,8 @@ const sweepstakeTeams = [
     owner: 'Robin',
     country: 'DR Congo',
     flag: '🇨🇩',
-    fifaName: 'Congo DR',
+    iso: 'cd',
+    fifaName: 'DR Congo',
     aliases: ['DR Congo', 'Congo DR', 'Democratic Republic of the Congo']
   },
   {
@@ -383,6 +425,7 @@ const sweepstakeTeams = [
     owner: 'Robin',
     country: 'Uzbekistan',
     flag: '🇺🇿',
+    iso: 'uz',
     fifaName: 'Uzbekistan',
     aliases: ['Uzbekistan']
   },
@@ -392,6 +435,7 @@ const sweepstakeTeams = [
     owner: 'Adam',
     country: 'Colombia',
     flag: '🇨🇴',
+    iso: 'co',
     fifaName: 'Colombia',
     aliases: ['Colombia']
   },
@@ -401,6 +445,7 @@ const sweepstakeTeams = [
     owner: 'Kelly',
     country: 'England',
     flag: '🏴',
+    iso: 'gb-eng',
     fifaName: 'England',
     aliases: ['England']
   },
@@ -410,6 +455,7 @@ const sweepstakeTeams = [
     owner: 'Ian',
     country: 'Croatia',
     flag: '🇭🇷',
+    iso: 'hr',
     fifaName: 'Croatia',
     aliases: ['Croatia']
   },
@@ -419,6 +465,7 @@ const sweepstakeTeams = [
     owner: 'Ayrton',
     country: 'Ghana',
     flag: '🇬🇭',
+    iso: 'gh',
     fifaName: 'Ghana',
     aliases: ['Ghana']
   },
@@ -428,6 +475,7 @@ const sweepstakeTeams = [
     owner: 'Ayrton',
     country: 'Panama',
     flag: '🇵🇦',
+    iso: 'pa',
     fifaName: 'Panama',
     aliases: ['Panama']
   }

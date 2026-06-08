@@ -12,10 +12,6 @@ const elements = {
   lastUpdated: document.querySelector('#last-updated'),
   providerStatus: document.querySelector('#provider-status')
 };
-const flagSlugOverrides = {
-  'cote-divoire': 'cote-d-ivoire'
-};
-
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -82,22 +78,67 @@ function buildTeamLookup(teams) {
   return lookup;
 }
 
-function getFlagSlug(teamId) {
-  return flagSlugOverrides[teamId] || teamId;
+function getTeamIndex() {
+  if (!state.data) {
+    return { byId: new Map(), byName: new Map() };
+  }
+
+  if (state.teamIndex && state.teamIndexFor === state.data) {
+    return state.teamIndex;
+  }
+
+  const byId = new Map();
+  const byName = new Map();
+
+  (state.data.teams || []).forEach((team) => {
+    byId.set(team.id, team);
+    [team.country, team.fifaName, ...(team.aliases || [])].forEach((name) => {
+      byName.set(normaliseTeamName(name), team);
+    });
+  });
+
+  state.teamIndex = { byId, byName };
+  state.teamIndexFor = state.data;
+  return state.teamIndex;
 }
 
-function renderFlag(team, size = '20x15') {
-  const teamId = team?.id || team?.teamId;
+function resolveIso(team) {
+  if (!team) {
+    return null;
+  }
 
-  if (!teamId) {
+  if (team.iso) {
+    return team.iso;
+  }
+
+  const { byId, byName } = getTeamIndex();
+  const id = team.id || team.teamId;
+
+  if (id && byId.has(id)) {
+    return byId.get(id).iso;
+  }
+
+  const name = team.country || team.name;
+
+  if (name && byName.has(normaliseTeamName(name))) {
+    return byName.get(normaliseTeamName(name)).iso;
+  }
+
+  return null;
+}
+
+function renderFlag(team, size = 20) {
+  const iso = resolveIso(team);
+
+  if (!iso) {
     return '';
   }
 
-  const className = size === '24x18' ? 'flag-img flag-fixture' : 'flag-img flag-small';
-  const src = `/assets/flags/${size}/${getFlagSlug(teamId)}.svg`;
+  const width = size;
+  const height = Math.round(size * 0.75);
   const alt = `${team.country || team.name || 'Team'} flag`;
 
-  return `<img class="${className}" src="${escapeHtml(src)}" alt="${escapeHtml(alt)}">`;
+  return `<img class="flag" src="/assets/flags-iso/${escapeHtml(iso)}.svg" width="${width}" height="${height}" alt="${escapeHtml(alt)}" loading="lazy">`;
 }
 
 function getFixtureTeam(lookup, apiName) {
@@ -109,6 +150,18 @@ function getFixtureTeam(lookup, apiName) {
     country: localTeam?.country || apiName || 'TBC',
     owner: localTeam?.owner || ''
   };
+}
+
+const STATUS_DISPLAY = {
+  scheduled: { label: 'Upcoming', tone: 'scheduled' },
+  live: { label: 'Live', tone: 'live' },
+  finished: { label: 'Full time', tone: 'ft' },
+  unavailable: { label: 'Off', tone: 'off' },
+  unknown: { label: '', tone: 'off' }
+};
+
+function getStatusDisplay(status) {
+  return STATUS_DISPLAY[status] || STATUS_DISPLAY.unknown;
 }
 
 function renderOverview(data) {
@@ -185,12 +238,12 @@ function renderFixtures(data) {
           <div class="match">
             <div class="fixture-teams">
               <div class="fixture-team fixture-team-home">
-                <div class="fixture-team-name">${renderFlag(homeTeam, '24x18')} ${escapeHtml(homeTeam.name)}</div>
+                <div class="fixture-team-name">${renderFlag(homeTeam, 24)} ${escapeHtml(homeTeam.name)}</div>
                 <small>${escapeHtml(homeTeam.owner || 'Unassigned')}</small>
               </div>
               <div class="fixture-score">${escapeHtml(score)}</div>
               <div class="fixture-team fixture-team-away">
-                <div class="fixture-team-name">${escapeHtml(awayTeam.name)} ${renderFlag(awayTeam, '24x18')}</div>
+                <div class="fixture-team-name">${escapeHtml(awayTeam.name)} ${renderFlag(awayTeam, 24)}</div>
                 <small>${escapeHtml(awayTeam.owner || 'Unassigned')}</small>
               </div>
             </div>

@@ -216,21 +216,15 @@ td {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Flags ---------- */
-.flag-img {
+/* ---------- Flags (4:3 SVG, design-system treatment) ---------- */
+.flag {
   display: inline-block;
+  flex: none;
+  vertical-align: middle;
+  border-radius: 2px;
   object-fit: cover;
-  vertical-align: -2px;
-}
-
-.flag-small {
-  width: 20px;
-  height: 15px;
-}
-
-.flag-fixture {
-  width: 24px;
-  height: 18px;
+  background: var(--line);
+  box-shadow: 0 0 0 1px rgba(21, 21, 30, 0.12);
 }
 
 .team-list,
