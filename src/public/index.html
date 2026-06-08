@@ -10,44 +10,35 @@
   </head>
   <body>
     <header class="page-header">
-      <div class="page-header__brand">
-        <img class="brand-mark" src="/assets/logo/mark.svg" alt="" width="40" height="40">
-        <div class="page-header__sub">
-          <h1>Sweepstake</h1>
-          <p class="page-header__tag">World Cup 2026</p>
+      <div class="page-header__top">
+        <div class="page-header__brand">
+          <img class="brand-mark" src="/assets/logo/mark.svg" alt="" width="40" height="40">
+          <div class="page-header__sub">
+            <h1>Sweepstake</h1>
+            <p class="page-header__tag">World Cup 2026</p>
+          </div>
+        </div>
+        <div class="page-header__actions">
+          <span class="livedot" id="live-indicator" hidden>
+            <span class="livedot__d"></span><span id="live-count"></span>
+          </span>
+          <button id="refresh-button" type="button">Refresh</button>
         </div>
       </div>
-      <button id="refresh-button" type="button">Refresh</button>
+      <nav class="page-header__nav" id="tabs">
+        <button class="tab" type="button" data-screen="leaderboard">Leaderboard</button>
+        <button class="tab" type="button" data-screen="groups">Groups</button>
+        <button class="tab" type="button" data-screen="fixtures">Fixtures</button>
+        <button class="tab" type="button" data-screen="bracket">Bracket</button>
+      </nav>
     </header>
 
-    <main>
-      <section>
-        <h2>Overview</h2>
-        <div id="overview" class="summary-grid"></div>
-        <p class="meta">Provider: <span id="provider-status">Loading...</span></p>
-        <p class="meta">Last updated: <span id="last-updated">Loading...</span></p>
-      </section>
+    <main class="screen" id="screen"></main>
 
-      <section>
-        <h2>Groups</h2>
-        <div id="groups" class="groups-grid"></div>
-      </section>
-
-      <section>
-        <h2>Fixtures</h2>
-        <div id="fixtures"></div>
-      </section>
-
-      <section>
-        <h2>Bracket</h2>
-        <div id="bracket" class="bracket-grid"></div>
-      </section>
-
-      <section>
-        <h2>Players</h2>
-        <div id="players"></div>
-      </section>
-    </main>
+    <footer class="footer">
+      <span>Sweepstake 26</span>
+      <span class="footer__meta">Last updated <span id="last-updated">…</span> · Provider <span id="provider-status">…</span></span>
+    </footer>
 
     <script src="/app.js"></script>
   </body>
