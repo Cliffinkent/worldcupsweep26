@@ -38,8 +38,12 @@ Request flow: `server.js` (Express + helmet/cors/rate-limit hardening) → `src/
 
 ### Data (`src/data/`)
 
-- `sweepstakeTeams.js` — the source of truth: 48 teams, each with `id`, `group` (A–L), `owner`, `country`, `flag`, `fifaName`, and `aliases`. Owners and group assignments live only here.
+- `sweepstakeTeams.js` — the source of truth: 48 teams, each with `id`, `group` (A–L), `owner`, `country`, `flag` (emoji, mostly unused by the UI), `iso` (flag-icons code, e.g. `gb-eng`), `fifaName`, and `aliases`. Owners and group assignments live only here.
 - `knockoutSlots.js` — the static bracket scaffold (Round of 32 → Final) the provider fixtures are mapped onto.
+
+### Frontend (`src/public/`)
+
+A vanilla, build-free tabbed SPA styled with the **Sweepstake 26** design system (tokens in `tokens/`, self-hosted Anton/Inter fonts + logo in `assets/`). `app.js` fetches `/api/sweepstake` once and renders four screens (Leaderboard / Groups / Fixtures / Bracket) into `#screen`, plus a "My teams" owner filter persisted in `localStorage`. Flags render as **ISO SVGs** from `assets/flags-iso/<iso>.svg` (not emoji — they don't render on Windows); `renderFlag` resolves a team's `iso` directly, by id, or by name. The DS React component bundle in `Design-system/` is reference-only — its primitives are hand-ported to vanilla HTML/CSS here. Because of the strict CSP, **no inline `style` attributes** (Avatar colours are palette classes).
 
 ### Status vocabulary
 
