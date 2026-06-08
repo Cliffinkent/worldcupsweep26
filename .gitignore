@@ -1,0 +1,4 @@
+.env
+node_modules/
+diagnostics/api-football/*.sample.json
+.DS_Store

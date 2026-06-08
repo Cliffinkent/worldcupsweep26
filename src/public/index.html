@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>World Cup Sweepstake</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <h1>World Cup Sweepstake</h1>
+        <p>2026 tracker MVP</p>
+      </div>
+      <button id="refresh-button" type="button">Refresh</button>
+    </header>
+
+    <main>
+      <section>
+        <h2>Overview</h2>
+        <div id="overview" class="summary-grid"></div>
+        <p class="meta">Provider: <span id="provider-status">Loading...</span></p>
+        <p class="meta">Last updated: <span id="last-updated">Loading...</span></p>
+      </section>
+
+      <section>
+        <h2>Groups</h2>
+        <div id="groups" class="groups-grid"></div>
+      </section>
+
+      <section>
+        <h2>Fixtures</h2>
+        <div id="fixtures"></div>
+      </section>
+
+      <section>
+        <h2>Bracket</h2>
+        <div id="bracket" class="bracket-grid"></div>
+      </section>
+
+      <section>
+        <h2>Players</h2>
+        <div id="players"></div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

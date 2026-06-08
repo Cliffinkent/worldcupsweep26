@@ -1,0 +1,22 @@
+{
+  "name": "world-cup-sweepstake",
+  "version": "0.1.0",
+  "description": "MVP app for tracking a 2026 World Cup sweepstake.",
+  "main": "server.js",
+  "scripts": {
+    "check:api-football": "node scripts/check-api-football.js",
+    "dev": "node --watch server.js",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0"
+  }
+}
