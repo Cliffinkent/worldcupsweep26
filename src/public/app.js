@@ -1,4 +1,5 @@
 const OWNER_STORAGE_KEY = 'sw26.owner';
+const LIVE_FIXTURE_REFRESH_MS = 60 * 1000;
 
 const state = {
   data: null,
@@ -26,6 +27,11 @@ const elements = {
   liveCount: document.querySelector('#live-count'),
   lastUpdated: document.querySelector('#last-updated'),
   providerStatus: document.querySelector('#provider-status')
+};
+
+const fixtureAutoRefresh = {
+  timerId: null,
+  inFlight: false
 };
 
 const KNOCKOUT_ROUNDS = new Set([
@@ -638,17 +644,66 @@ function populateOwnerFilter() {
   elements.ownerFilter.innerHTML = options.join('');
 }
 
-function renderScreen() {
+function renderScreen(options = {}) {
+  const { preserveScroll = false } = options;
+  const scrollTop = preserveScroll ? elements.screen.scrollTop : 0;
   const build = SCREENS[state.screen] || screenLeaderboard;
   elements.screen.innerHTML = build();
-  elements.screen.scrollTop = 0;
+  elements.screen.scrollTop = preserveScroll
+    ? Math.min(scrollTop, Math.max(0, elements.screen.scrollHeight - elements.screen.clientHeight))
+    : 0;
 
   elements.tabs.querySelectorAll('.tab').forEach((button) => {
     button.classList.toggle('tab--on', button.dataset.screen === state.screen);
   });
 }
 
-function render(data) {
+function shouldAutoRefreshFixtures() {
+  return state.screen === 'fixtures' && Boolean(state.data) && !document.hidden;
+}
+
+function clearFixtureAutoRefresh() {
+  if (fixtureAutoRefresh.timerId !== null) {
+    window.clearTimeout(fixtureAutoRefresh.timerId);
+    fixtureAutoRefresh.timerId = null;
+  }
+}
+
+function scheduleFixtureAutoRefresh() {
+  clearFixtureAutoRefresh();
+
+  if (!shouldAutoRefreshFixtures()) {
+    return;
+  }
+
+  fixtureAutoRefresh.timerId = window.setTimeout(refreshLiveFixtures, LIVE_FIXTURE_REFRESH_MS);
+}
+
+async function refreshLiveFixtures() {
+  fixtureAutoRefresh.timerId = null;
+
+  if (!shouldAutoRefreshFixtures()) {
+    return;
+  }
+
+  if (fixtureAutoRefresh.inFlight) {
+    scheduleFixtureAutoRefresh();
+    return;
+  }
+
+  fixtureAutoRefresh.inFlight = true;
+
+  try {
+    await loadSweepstake({ preserveScroll: true });
+  } catch (error) {
+    elements.lastUpdated.innerHTML = `<span class="error">${escapeHtml(error.message)}</span>`;
+  } finally {
+    fixtureAutoRefresh.inFlight = false;
+    scheduleFixtureAutoRefresh();
+  }
+}
+
+function render(data, options = {}) {
   state.data = data;
 
   if (state.openOwner === null && data.players && data.players.length) {
@@ -658,17 +713,18 @@ function render(data) {
   updateLive();
   updateFooter(data);
   populateOwnerFilter();
-  renderScreen();
+  renderScreen(options);
+  scheduleFixtureAutoRefresh();
 }
 
-async function loadSweepstake() {
+async function loadSweepstake(options = {}) {
   const response = await fetch('/api/sweepstake');
 
   if (!response.ok) {
     throw new Error('Could not load sweepstake data');
   }
 
-  render(await response.json());
+  render(await response.json(), options);
 }
 
 async function refreshSweepstake() {
@@ -705,6 +761,7 @@ elements.tabs.addEventListener('click', (event) => {
 
   state.screen = button.dataset.screen;
   renderScreen();
+  scheduleFixtureAutoRefresh();
 });
 
 elements.screen.addEventListener('click', (event) => {
@@ -747,6 +804,14 @@ elements.ownerFilter.addEventListener('change', (event) => {
 });
 
 elements.refreshButton.addEventListener('click', refreshSweepstake);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    clearFixtureAutoRefresh();
+  } else {
+    scheduleFixtureAutoRefresh();
+  }
+});
 
 loadSweepstake().catch((error) => {
   elements.screen.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
