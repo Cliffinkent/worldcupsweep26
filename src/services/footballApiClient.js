@@ -38,6 +38,14 @@ const STATUS_MAP = {
   WO: 'unavailable'
 };
 const DISPLAY_GROUPS = new Set('ABCDEFGHIJKL'.split(''));
+const NORMALISED_KNOCKOUT_ROUNDS = new Set([
+  'Round of 32',
+  'Round of 16',
+  'Quarter-finals',
+  'Semi-finals',
+  'Third-place play-off',
+  'Final'
+]);
 
 const state = {
   provider: 'api-football',
@@ -48,6 +56,7 @@ const state = {
   cachedFixturesCount: 0,
   cachedStandingsGroupsCount: 0,
   unmatchedTeams: [],
+  unknownRoundStrings: [],
   roundsAvailable: [],
   lastRateLimit: {},
   providerErrorCount: 0
@@ -106,6 +115,7 @@ function getProviderStatus() {
     cachedFixturesCount: state.cachedFixturesCount,
     cachedStandingsGroupsCount: state.cachedStandingsGroupsCount,
     unmatchedTeams: state.unmatchedTeams,
+    unknownRoundStrings: state.unknownRoundStrings,
     roundsAvailable: state.roundsAvailable,
     providerStatus: hasApiKey() ? state.providerStatus : 'missing_api_key',
     message: hasApiKey() ? state.message : 'API-Football key is not configured'
@@ -139,12 +149,12 @@ function captureRateLimitHeaders(headers) {
 }
 
 function getGroupLetter(value) {
-  const match = String(value || '').match(/Group\s+([A-L])/i);
+  const match = String(value || '').match(/\bGroup\s+([A-L])\b/i);
   return match ? match[1].toUpperCase() : null;
 }
 
 function normaliseStatus(rawStatus) {
-  const rawCode = rawStatus?.short || rawStatus?.long || null;
+  const rawCode = String(rawStatus?.short || rawStatus?.long || '').toUpperCase();
   return STATUS_MAP[rawCode] || 'unknown';
 }
 
@@ -154,6 +164,11 @@ function normaliseRound(round) {
   }
 
   const lowered = String(round).toLowerCase();
+  const group = getGroupLetter(round);
+
+  if (group) {
+    return `Group ${group}`;
+  }
 
   if (lowered.includes('round of 32')) {
     return 'Round of 32';
@@ -180,6 +195,23 @@ function normaliseRound(round) {
   }
 
   return round;
+}
+
+function collectUnknownRoundStrings(fixtures) {
+  const unknownRounds = new Set();
+
+  fixtures.forEach((fixture) => {
+    const rawRound = fixture.rawRound || fixture.round;
+
+    if (!rawRound || fixture.group || NORMALISED_KNOCKOUT_ROUNDS.has(fixture.round)) {
+      return;
+    }
+
+    unknownRounds.add(rawRound);
+  });
+
+  state.unknownRoundStrings = Array.from(unknownRounds).sort();
+  return state.unknownRoundStrings;
 }
 
 function normaliseTeamName(team) {
@@ -235,8 +267,9 @@ function normaliseFixture(rawFixture) {
   const utcDate = rawFixture?.fixture?.date || null;
   const localDate = utcDate ? new Date(utcDate).toISOString() : null;
   const date = utcDate ? utcDate.slice(0, 10) : null;
-  const round = normaliseRound(rawFixture?.league?.round || null);
-  const explicitGroup = getGroupLetter(rawFixture?.league?.round);
+  const rawRound = rawFixture?.league?.round || null;
+  const round = normaliseRound(rawRound);
+  const explicitGroup = getGroupLetter(rawRound);
   const inferredGroup = localHomeTeam?.group === localAwayTeam?.group ? localHomeTeam?.group : null;
 
   return {
@@ -247,6 +280,7 @@ function normaliseFixture(rawFixture) {
     status,
     statusLabel: rawFixture?.fixture?.status?.long || rawStatus || status,
     round,
+    rawRound,
     group: explicitGroup || inferredGroup || null,
     venue: rawFixture?.fixture?.venue?.name || null,
     city: rawFixture?.fixture?.venue?.city || null,
@@ -384,6 +418,13 @@ async function getResource(resourceName, fetcher, options = {}) {
 
     if (resourceName === 'fixtures') {
       state.cachedFixturesCount = data.length;
+      const unknownRoundStrings = collectUnknownRoundStrings(data);
+
+      if (forceRefresh && unknownRoundStrings.length) {
+        console.warn('api-football unknown fixture rounds', {
+          unknownRoundStrings
+        });
+      }
     }
 
     if (resourceName === 'standings') {
@@ -456,10 +497,11 @@ async function getLiveWorldCupFixtures(options = {}) {
 
 async function refreshWorldCupData() {
   const providerErrorCountBeforeRefresh = state.providerErrorCount;
-  const [fixtures, standings, rounds] = await Promise.all([
+  const [fixtures, standings, rounds, liveFixtures] = await Promise.all([
     getWorldCupFixtures({ forceRefresh: true }),
     getWorldCupStandings({ forceRefresh: true }),
-    getWorldCupRounds({ forceRefresh: true })
+    getWorldCupRounds({ forceRefresh: true }),
+    getLiveWorldCupFixtures({ forceRefresh: true })
   ]);
 
   if (state.providerErrorCount > providerErrorCountBeforeRefresh) {
@@ -470,6 +512,7 @@ async function refreshWorldCupData() {
     fixtures,
     standings,
     rounds,
+    liveFixtures,
     providerStatus: getProviderStatus()
   };
 }

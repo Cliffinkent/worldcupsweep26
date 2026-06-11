@@ -6,6 +6,7 @@
   "scripts": {
     "check:api-football": "node scripts/check-api-football.js",
     "dev": "node --watch server.js",
+    "test": "node scripts/assert-table-calculation.js",
     "start": "node server.js"
   },
   "engines": {

@@ -16,6 +16,16 @@ function createEmptyRow(team) {
   };
 }
 
+const DISPLAY_GROUPS = new Set('ABCDEFGHIJKL'.split(''));
+const KNOCKOUT_ROUNDS = new Set([
+  'Round of 32',
+  'Round of 16',
+  'Quarter-finals',
+  'Semi-finals',
+  'Third-place play-off',
+  'Final'
+]);
+
 function normaliseName(value) {
   return String(value || '')
     .toLowerCase()
@@ -87,20 +97,48 @@ function compareRows(a, b) {
   );
 }
 
-function isKnockoutFixture(fixture) {
-  return [
-    'Round of 32',
-    'Round of 16',
-    'Quarter-finals',
-    'Semi-finals',
-    'Third-place play-off',
-    'Final'
-  ].includes(fixture.round);
+function isDisplayGroup(group) {
+  return DISPLAY_GROUPS.has(group);
 }
 
-function calculateGroupTables(teams, fixtures) {
+function getFixtureGroup(fixture, homeTeam, awayTeam) {
+  if (KNOCKOUT_ROUNDS.has(fixture.round)) {
+    return null;
+  }
+
+  if (isDisplayGroup(fixture.group)) {
+    return fixture.group;
+  }
+
+  if (homeTeam?.group && homeTeam.group === awayTeam?.group && isDisplayGroup(homeTeam.group)) {
+    return homeTeam.group;
+  }
+
+  const match = String(fixture.round || '').match(/\bGroup\s+([A-L])\b/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
+function isFinishedFixture(fixture) {
+  return fixture.status === 'finished';
+}
+
+function hasUsableScore(fixture) {
+  return Number.isFinite(fixture.homeScore) && Number.isFinite(fixture.awayScore);
+}
+
+function createFixtureDiagnostic(fixture, extra = {}) {
+  return {
+    id: fixture.id || null,
+    round: fixture.round || null,
+    ...extra
+  };
+}
+
+function calculateGroupTablesWithDiagnostics(teams, fixtures) {
   const lookup = buildTeamLookup(teams);
   const tables = new Map();
+  const countedFixtures = [];
+  const ignoredFinishedFixtures = [];
 
   teams.forEach((team) => {
     if (!tables.has(team.group)) {
@@ -111,36 +149,78 @@ function calculateGroupTables(teams, fixtures) {
   });
 
   fixtures
-    .filter((fixture) => fixture.status === 'finished' && !isKnockoutFixture(fixture))
+    .filter(isFinishedFixture)
     .forEach((fixture) => {
       const homeTeam = findTeamByName(lookup, fixture.homeTeam);
       const awayTeam = findTeamByName(lookup, fixture.awayTeam);
+      const fixtureGroup = getFixtureGroup(fixture, homeTeam, awayTeam);
 
-      if (!homeTeam || !awayTeam || homeTeam.group !== awayTeam.group) {
+      if (!isDisplayGroup(fixtureGroup)) {
+        ignoredFinishedFixtures.push(createFixtureDiagnostic(fixture, {
+          reason: 'not_group_stage_fixture'
+        }));
         return;
       }
 
-      if (fixture.group && fixture.group !== homeTeam.group) {
+      if (!homeTeam || !awayTeam) {
+        ignoredFinishedFixtures.push(createFixtureDiagnostic(fixture, {
+          group: fixtureGroup,
+          reason: 'unmatched_team'
+        }));
         return;
       }
 
-      if (!Number.isFinite(fixture.homeScore) || !Number.isFinite(fixture.awayScore)) {
+      if (homeTeam.group !== fixtureGroup || awayTeam.group !== fixtureGroup) {
+        ignoredFinishedFixtures.push(createFixtureDiagnostic(fixture, {
+          group: fixtureGroup,
+          reason: 'team_group_mismatch'
+        }));
         return;
       }
 
-      applyResult(tables.get(homeTeam.group), homeTeam, awayTeam, fixture.homeScore, fixture.awayScore);
+      if (!hasUsableScore(fixture)) {
+        ignoredFinishedFixtures.push(createFixtureDiagnostic(fixture, {
+          group: fixtureGroup,
+          reason: 'missing_numeric_score'
+        }));
+        return;
+      }
+
+      applyResult(tables.get(fixtureGroup), homeTeam, awayTeam, fixture.homeScore, fixture.awayScore);
+      countedFixtures.push(createFixtureDiagnostic(fixture, {
+        group: fixtureGroup,
+        homeTeam: fixture.homeTeam || null,
+        awayTeam: fixture.awayTeam || null,
+        homeScore: fixture.homeScore,
+        awayScore: fixture.awayScore,
+        status: fixture.status
+      }));
     });
 
-  return Array.from(tables.entries())
+  const groupTables = Array.from(tables.entries())
     .sort(([groupA], [groupB]) => groupA.localeCompare(groupB))
     .map(([group, rows]) => ({
       group,
       table: Array.from(rows.values()).sort(compareRows)
     }));
+
+  return {
+    groupTables,
+    diagnostics: {
+      finishedGroupFixturesCount: countedFixtures.length,
+      countedFixtures,
+      ignoredFinishedFixtures
+    }
+  };
+}
+
+function calculateGroupTables(teams, fixtures) {
+  return calculateGroupTablesWithDiagnostics(teams, fixtures).groupTables;
 }
 
 module.exports = {
   calculateGroupTables,
+  calculateGroupTablesWithDiagnostics,
   buildTeamLookup,
   findTeamByName
 };

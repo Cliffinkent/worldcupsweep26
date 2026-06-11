@@ -5,6 +5,7 @@ const {
   getGroupsData,
   getFixturesData,
   getBracketData,
+  getTableSourceDebug,
   refreshData,
   getProviderStatus
 } = require('../services/sweepstakeService');
@@ -84,6 +85,10 @@ router.get('/fixtures', asyncHandler(async (req, res) => {
 
 router.get('/bracket', asyncHandler(async (req, res) => {
   res.json(await getBracketData());
+}));
+
+router.get('/debug/table-source', asyncHandler(async (req, res) => {
+  res.json(await getTableSourceDebug());
 }));
 
 router.post('/refresh', refreshLimiter, asyncHandler(async (req, res) => {

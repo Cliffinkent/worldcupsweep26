@@ -10,7 +10,7 @@ const {
   getProviderStatus
 } = require('./footballApiClient');
 const {
-  calculateGroupTables,
+  calculateGroupTablesWithDiagnostics,
   buildTeamLookup,
   findTeamByName
 } = require('./tableCalculator');
@@ -175,18 +175,32 @@ function hasCompleteProviderGroupTables(groupTables) {
 }
 
 function resolveGroupTables(fixtures, standings) {
+  const calculated = calculateGroupTablesWithDiagnostics(sweepstakeTeams, fixtures);
   const apiGroupTables = buildApiGroupTables(standings);
+
+  if (calculated.diagnostics.finishedGroupFixturesCount > 0) {
+    return {
+      groupTables: calculated.groupTables,
+      groupTableSource: 'calculated_fixtures',
+      tableDiagnostics: calculated.diagnostics,
+      comparisonGroupTables: hasCompleteProviderGroupTables(apiGroupTables) ? apiGroupTables : []
+    };
+  }
 
   if (hasCompleteProviderGroupTables(apiGroupTables)) {
     return {
       groupTables: apiGroupTables,
-      groupTableSource: 'api_standings'
+      groupTableSource: 'api_standings_fallback',
+      tableDiagnostics: calculated.diagnostics,
+      comparisonGroupTables: apiGroupTables
     };
   }
 
   return {
-    groupTables: calculateGroupTables(sweepstakeTeams, fixtures),
-    groupTableSource: 'calculated_fixtures'
+    groupTables: calculated.groupTables,
+    groupTableSource: 'calculated_fixtures_empty',
+    tableDiagnostics: calculated.diagnostics,
+    comparisonGroupTables: []
   };
 }
 
@@ -363,6 +377,13 @@ async function getGroupsData() {
   };
 }
 
+async function getTableSourceDebug() {
+  const fixtures = await getWorldCupFixtures();
+  const { diagnostics } = calculateGroupTablesWithDiagnostics(sweepstakeTeams, fixtures);
+
+  return diagnostics;
+}
+
 async function getFixturesData() {
   const fixtures = attachBroadcasts(await getWorldCupFixtures());
 
@@ -390,8 +411,13 @@ async function getBracketData() {
 }
 
 async function refreshData() {
-  const { fixtures: rawFixtures, standings, rounds, providerStatus } = await refreshWorldCupData();
-  const rawLiveFixtures = await getLiveWorldCupFixtures();
+  const {
+    fixtures: rawFixtures,
+    standings,
+    rounds,
+    liveFixtures: rawLiveFixtures,
+    providerStatus
+  } = await refreshWorldCupData();
   const fixtures = attachBroadcasts(rawFixtures);
   const liveFixtures = attachBroadcasts(rawLiveFixtures);
   const { groupTables, groupTableSource } = resolveGroupTables(fixtures, standings);
@@ -422,6 +448,8 @@ module.exports = {
   getGroupsData,
   getFixturesData,
   getBracketData,
+  getTableSourceDebug,
   refreshData,
-  getProviderStatus
+  getProviderStatus,
+  buildParticipantSummaries
 };
