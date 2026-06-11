@@ -18,7 +18,9 @@ const allowedOrigins = new Set([
 app.disable('x-powered-by');
 
 app.use(helmet({
+  hsts: false,
   contentSecurityPolicy: {
+    useDefaults: false,
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
@@ -26,7 +28,8 @@ app.use(helmet({
       imgSrc: ["'self'", 'data:'],
       connectSrc: ["'self'"],
       objectSrc: ["'none'"],
-      baseUri: ["'self'"]
+      baseUri: ["'self'"],
+      fontSrc: ["'self'"]
     }
   }
 }));

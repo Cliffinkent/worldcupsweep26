@@ -1,5 +1,6 @@
 const sweepstakeTeams = require('../data/sweepstakeTeams');
 const knockoutSlots = require('../data/knockoutSlots');
+const { getBroadcastForFixture } = require('../data/broadcasts');
 const {
   getWorldCupFixtures,
   getWorldCupStandings,
@@ -48,6 +49,13 @@ function groupFixturesByDate(fixtures) {
       date,
       matches: matches.sort((a, b) => String(a.utcDate || '').localeCompare(String(b.utcDate || '')))
     }));
+}
+
+function attachBroadcasts(fixtures) {
+  return fixtures.map((fixture) => ({
+    ...fixture,
+    broadcast: getBroadcastForFixture(fixture)
+  }));
 }
 
 function getFixtureRound(fixture) {
@@ -311,12 +319,14 @@ function buildParticipantSummaries(groupTables, fixtures, liveFixtures) {
 }
 
 async function getSweepstakeData() {
-  const [fixtures, standings, rounds, liveFixtures] = await Promise.all([
+  const [rawFixtures, standings, rounds, rawLiveFixtures] = await Promise.all([
     getWorldCupFixtures(),
     getWorldCupStandings(),
     getWorldCupRounds(),
     getLiveWorldCupFixtures()
   ]);
+  const fixtures = attachBroadcasts(rawFixtures);
+  const liveFixtures = attachBroadcasts(rawLiveFixtures);
   const groups = groupTeams();
   const { groupTables, groupTableSource } = resolveGroupTables(fixtures, standings);
   const players = buildParticipantSummaries(groupTables, fixtures, liveFixtures);
@@ -354,7 +364,7 @@ async function getGroupsData() {
 }
 
 async function getFixturesData() {
-  const fixtures = await getWorldCupFixtures();
+  const fixtures = attachBroadcasts(await getWorldCupFixtures());
 
   return {
     generatedAt: new Date().toISOString(),
@@ -365,10 +375,11 @@ async function getFixturesData() {
 }
 
 async function getBracketData() {
-  const [fixtures, rounds] = await Promise.all([
+  const [rawFixtures, rounds] = await Promise.all([
     getWorldCupFixtures(),
     getWorldCupRounds()
   ]);
+  const fixtures = attachBroadcasts(rawFixtures);
 
   return {
     generatedAt: new Date().toISOString(),
@@ -379,8 +390,10 @@ async function getBracketData() {
 }
 
 async function refreshData() {
-  const { fixtures, standings, rounds, providerStatus } = await refreshWorldCupData();
-  const liveFixtures = await getLiveWorldCupFixtures();
+  const { fixtures: rawFixtures, standings, rounds, providerStatus } = await refreshWorldCupData();
+  const rawLiveFixtures = await getLiveWorldCupFixtures();
+  const fixtures = attachBroadcasts(rawFixtures);
+  const liveFixtures = attachBroadcasts(rawLiveFixtures);
   const { groupTables, groupTableSource } = resolveGroupTables(fixtures, standings);
   const groupsCountAL = groupTables.filter((group) => /^[A-L]$/.test(group.group)).length;
 

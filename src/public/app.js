@@ -181,6 +181,19 @@ function renderFlag(team, size = 20) {
   return `<img class="flag" src="/assets/flags-iso/${escapeHtml(iso)}.svg" width="${width}" height="${height}" alt="${escapeHtml(alt)}" loading="lazy">`;
 }
 
+function renderBroadcast(broadcast) {
+  if (!broadcast) {
+    return '';
+  }
+
+  const name = broadcast.name || broadcast.channel || 'TV TBC';
+  const logo = broadcast.logo
+    ? `<img class="sw-broadcast__logo" src="${escapeHtml(broadcast.logo)}" alt="" width="42" height="16" loading="lazy">`
+    : '';
+
+  return `<span class="sw-broadcast sw-broadcast--${escapeHtml(broadcast.id || 'tbc')}" title="${escapeHtml(broadcast.channel || name)}">${logo}<span class="sw-broadcast__name">${escapeHtml(name)}</span></span>`;
+}
+
 function getFixtureTeam(apiName) {
   const { byName } = getTeamIndex();
   const team = byName.get(normaliseTeamName(apiName));
@@ -461,6 +474,7 @@ function fixtureRow(match) {
   } else if (match.status === 'scheduled') {
     pill = statusPill('scheduled', formatKickOffTime(match.utcDate));
   }
+  const broadcast = renderBroadcast(match.broadcast);
 
   return `<div class="sw-fix${live ? ' sw-fix--live' : ''}">
     <div class="sw-fix__side sw-fix__side--home">
@@ -468,7 +482,7 @@ function fixtureRow(match) {
       <span class="sw-fix__team">${escapeHtml(home.country)}</span>
       ${renderFlag(home, 34)}
     </div>
-    <div class="sw-fix__center">${centre}${pill}</div>
+    <div class="sw-fix__center">${centre}${pill}${broadcast}</div>
     <div class="sw-fix__side sw-fix__side--away">
       ${renderFlag(away, 34)}
       <span class="sw-fix__team">${escapeHtml(away.country)}</span>
@@ -509,21 +523,78 @@ function bracketTieSide(name, placeholder) {
   return `<div class="sw-tie__team">${renderFlag(team, 22)}<span class="sw-tie__name">${escapeHtml(team.country)}</span><span class="sw-tie__owner">${escapeHtml(team.owner || '')}</span></div>`;
 }
 
+const BRACKET_WINGS = {
+  left: [
+    { round: 'Round of 32', matches: [73, 75, 74, 77, 83, 84, 81, 82] },
+    { round: 'Round of 16', matches: [89, 90, 93, 94] },
+    { round: 'Quarter-finals', matches: [97, 98] },
+    { round: 'Semi-finals', matches: [101] }
+  ],
+  right: [
+    { round: 'Semi-finals', matches: [102] },
+    { round: 'Quarter-finals', matches: [99, 100] },
+    { round: 'Round of 16', matches: [91, 92, 95, 96] },
+    { round: 'Round of 32', matches: [76, 78, 79, 80, 86, 88, 85, 87] }
+  ]
+};
+
+function bracketMatch(match, side = '') {
+  const tbc = !match.homeTeam && !match.awayTeam;
+  const mine = (match.homeTeam && getFixtureTeam(match.homeTeam).owner === state.filterOwner)
+    || (match.awayTeam && getFixtureTeam(match.awayTeam).owner === state.filterOwner);
+  const number = match.matchNumber ? `<span class="sw-tie__number">M${match.matchNumber}</span>` : '';
+
+  return `<div class="sw-tie${side ? ` sw-tie--${side}` : ''}${tbc ? ' sw-tie--tbc' : ''}${mine ? ' sw-tie--mine' : ''}">
+    ${number}
+    ${bracketTieSide(match.homeTeam, match.homePlaceholder)}
+    ${bracketTieSide(match.awayTeam, match.awayPlaceholder)}
+  </div>`;
+}
+
+function buildBracketIndex(rounds) {
+  return rounds.reduce((index, round) => {
+    (round.matches || []).forEach((match) => {
+      if (match.matchNumber) {
+        index.set(match.matchNumber, match);
+      }
+    });
+    return index;
+  }, new Map());
+}
+
+function bracketRoundColumn(stage, matchesByNumber, side) {
+  const ties = stage.matches
+    .map((matchNumber) => matchesByNumber.get(matchNumber))
+    .filter(Boolean)
+    .map((match) => bracketMatch(match, side))
+    .join('');
+
+  return `<div class="sw-bracket__col sw-bracket__col--${side}">
+    <div class="sw-bracket__round">${escapeHtml(stage.round)}</div>
+    <div class="sw-bracket__ties sw-bracket__ties--${stage.matches.length}">${ties}</div>
+  </div>`;
+}
+
 function screenBracket() {
   const rounds = state.data.bracket || [];
+  const matchesByNumber = buildBracketIndex(rounds);
+  const finalMatch = matchesByNumber.get(104);
+  const thirdPlaceMatch = matchesByNumber.get(103);
 
-  const columns = rounds.map((round) => {
-    const ties = round.matches.map((match) => {
-      const tbc = !match.homeTeam && !match.awayTeam;
-      const mine = (match.homeTeam && getFixtureTeam(match.homeTeam).owner === state.filterOwner)
-        || (match.awayTeam && getFixtureTeam(match.awayTeam).owner === state.filterOwner);
-      return `<div class="sw-tie${tbc ? ' sw-tie--tbc' : ''}${mine ? ' sw-tie--mine' : ''}">${bracketTieSide(match.homeTeam, match.homePlaceholder)}${bracketTieSide(match.awayTeam, match.awayPlaceholder)}</div>`;
-    }).join('');
+  const left = BRACKET_WINGS.left
+    .map((stage) => bracketRoundColumn(stage, matchesByNumber, 'left'))
+    .join('');
+  const right = BRACKET_WINGS.right
+    .map((stage) => bracketRoundColumn(stage, matchesByNumber, 'right'))
+    .join('');
+  const centre = `<div class="sw-bracket__finals">
+    <div class="sw-bracket__round">Final</div>
+    ${finalMatch ? bracketMatch(finalMatch, 'final') : ''}
+    <div class="sw-bracket__round sw-bracket__round--minor">Third place</div>
+    ${thirdPlaceMatch ? bracketMatch(thirdPlaceMatch, 'final') : ''}
+  </div>`;
 
-    return `<details class="sw-bracket__col" open><summary class="sw-bracket__round">${escapeHtml(round.round)}</summary><div class="sw-bracket__ties">${ties}</div></details>`;
-  }).join('');
-
-  return `${sectionHead('Knockout bracket', 'Slots fill as the group stage finishes')}<div class="sw-bracket">${columns}</div>`;
+  return `${sectionHead('Knockout bracket', 'Official match path · slots fill as the group stage finishes')}<div class="sw-bracket"><div class="sw-bracket__wing">${left}</div>${centre}<div class="sw-bracket__wing sw-bracket__wing--right">${right}</div></div>`;
 }
 
 const SCREENS = {
