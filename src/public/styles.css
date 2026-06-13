@@ -733,6 +733,37 @@ button {
 .sw-num--pts { font-weight: var(--weight-extrabold); color: var(--ink); }
 
 /* Fixtures */
+.sw-live-now {
+  margin-bottom: var(--space-6);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--magenta);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+
+.sw-live-now__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.sw-live-now__title {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--magenta);
+}
+
+.sw-live-now__count {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--ink-80);
+}
+
 .sw-day { margin-bottom: var(--space-6); }
 
 .sw-day__date {

@@ -497,6 +497,13 @@ function fixtureRow(match) {
   </div>`;
 }
 
+function fixtureDaySection(day) {
+  return `<section class="sw-day">
+    <h3 class="sw-day__date">${escapeHtml(formatDayLabel(day.date))}</h3>
+    <div class="sw-day__list">${day.matches.map(fixtureRow).join('')}</div>
+  </section>`;
+}
+
 function screenFixtures() {
   let days = state.data.fixtures || [];
   const meta = state.filterOwner ? `${state.filterOwner}'s matches` : 'Owners shown above each nation';
@@ -512,12 +519,27 @@ function screenFixtures() {
     return `${sectionHead('Fixtures', meta)}<p class="empty">${empty}</p>`;
   }
 
-  const list = days.map((day) => `<section class="sw-day">
-    <h3 class="sw-day__date">${escapeHtml(formatDayLabel(day.date))}</h3>
-    <div class="sw-day__list">${day.matches.map(fixtureRow).join('')}</div>
-  </section>`).join('');
+  const liveMatches = days.flatMap((day) => day.matches.filter((match) => match.status === 'live'));
+  const upcomingAndFinishedDays = days
+    .map((day) => ({
+      date: day.date,
+      matches: day.matches.filter((match) => match.status !== 'live')
+    }))
+    .filter((day) => day.matches.length);
 
-  return `${sectionHead('Fixtures', meta)}${list}`;
+  const liveNow = liveMatches.length
+    ? `<section class="sw-live-now" aria-label="Live now">
+      <div class="sw-live-now__head">
+        <h3 class="sw-live-now__title">Live now</h3>
+        <span class="sw-live-now__count">${liveMatches.length} ${liveMatches.length === 1 ? 'match' : 'matches'} in play</span>
+      </div>
+      <div class="sw-day__list">${liveMatches.map(fixtureRow).join('')}</div>
+    </section>`
+    : '';
+
+  const list = upcomingAndFinishedDays.map(fixtureDaySection).join('');
+
+  return `${sectionHead('Fixtures', meta)}${liveNow}${list}`;
 }
 
 function bracketTieSide(name, placeholder) {
