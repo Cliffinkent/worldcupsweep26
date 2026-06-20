@@ -34,6 +34,9 @@ const fixtureAutoRefresh = {
   inFlight: false
 };
 
+let fixtureJumpMessageTimer = null;
+let fixtureJumpHighlightTimer = null;
+
 const KNOCKOUT_ROUNDS = new Set([
   'Round of 32',
   'Round of 16',
@@ -109,6 +112,65 @@ function formatKickOffTime(value) {
     hour12: false,
     timeZone: 'Europe/London'
   }).format(date)} BST`;
+}
+
+function normaliseFixtureStatus(status) {
+  if (status === 'live' || status === 'finished') {
+    return status;
+  }
+
+  return 'scheduled';
+}
+
+function fixtureDateValue(match, fallbackDate) {
+  return match?.utcDate || match?.date || fallbackDate || '';
+}
+
+function fixtureCalendarDateValue(match, fallbackDate) {
+  return match?.date || fallbackDate || '';
+}
+
+function fixtureIdentifier(match, fallbackDate) {
+  return match?.id || [
+    fixtureDateValue(match, fallbackDate),
+    match?.round,
+    match?.homeTeam,
+    match?.awayTeam
+  ].filter(Boolean).join('|');
+}
+
+function parseFixtureDate(value) {
+  if (!value || value === 'unscheduled') {
+    return null;
+  }
+
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(`${value}T00:00:00`)
+    : new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function startOfLocalDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date, days) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+function isSameLocalDay(a, b) {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate();
+}
+
+function compareFixtureCandidatesAsc(a, b) {
+  return a.date.getTime() - b.date.getTime() || a.index - b.index;
+}
+
+function compareFixtureCandidatesDesc(a, b) {
+  return b.date.getTime() - a.date.getTime() || b.index - a.index;
 }
 
 function normaliseTeamName(value) {
@@ -471,13 +533,17 @@ function screenGroups() {
   return `${sectionHead('Group stage', 'Top two qualify · highlighted')}<div class="sw-groups">${tables}</div>`;
 }
 
-function fixtureRow(match) {
+function fixtureRow(match, fallbackDate) {
   const home = getFixtureTeam(match.homeTeam);
   const away = getFixtureTeam(match.awayTeam);
-  const live = match.status === 'live';
-  const finished = match.status === 'finished';
+  const status = normaliseFixtureStatus(match.status);
+  const live = status === 'live';
+  const finished = status === 'finished';
   const hasScore = match.homeScore !== null && match.homeScore !== undefined
     && match.awayScore !== null && match.awayScore !== undefined;
+  const fixtureDate = fixtureCalendarDateValue(match, fallbackDate);
+  const fixtureUtcDate = match.utcDate || '';
+  const fixtureId = fixtureIdentifier(match, fallbackDate);
 
   const centre = hasScore
     ? `<span class="sw-fix__score">${match.homeScore}<i>–</i>${match.awayScore}</span>`
@@ -488,12 +554,12 @@ function fixtureRow(match) {
     pill = statusPill('live', match.elapsed ? `${match.elapsed}'` : 'Live');
   } else if (finished) {
     pill = statusPill('ft', 'Full time');
-  } else if (match.status === 'scheduled') {
+  } else if (status === 'scheduled') {
     pill = statusPill('scheduled', formatKickOffTime(match.utcDate));
   }
   const broadcast = renderBroadcast(match.broadcast);
 
-  return `<div class="sw-fix${live ? ' sw-fix--live' : ''}">
+  return `<div class="sw-fix${live ? ' sw-fix--live' : ''}" data-fixture-id="${escapeHtml(fixtureId)}" data-fixture-date="${escapeHtml(fixtureDate)}" data-fixture-utc-date="${escapeHtml(fixtureUtcDate)}" data-fixture-status="${escapeHtml(status)}">
     <div class="sw-fix__side sw-fix__side--home">
       <span class="sw-fix__owner">${escapeHtml(home.owner || 'Unassigned')}</span>
       <span class="sw-fix__team">${escapeHtml(home.country)}</span>
@@ -509,10 +575,17 @@ function fixtureRow(match) {
 }
 
 function fixtureDaySection(day) {
-  return `<section class="sw-day">
+  return `<section class="sw-day" data-fixture-date-section data-date="${escapeHtml(day.date || '')}">
     <h3 class="sw-day__date">${escapeHtml(formatDayLabel(day.date))}</h3>
-    <div class="sw-day__list">${day.matches.map(fixtureRow).join('')}</div>
+    <div class="sw-day__list">${day.matches.map((match) => fixtureRow(match, day.date)).join('')}</div>
   </section>`;
+}
+
+function fixtureJumpControls() {
+  return `<div class="sw-fixture-jump">
+    <button id="fixture-jump-button" class="btn sw-fixture-jump__button" type="button" aria-label="Jump to today or next upcoming fixture">Jump To Today</button>
+    <span id="fixture-jump-message" class="sw-fixture-jump__message" role="status" aria-live="polite"></span>
+  </div>`;
 }
 
 function screenFixtures() {
@@ -527,10 +600,12 @@ function screenFixtures() {
 
   if (!days.length) {
     const empty = state.filterOwner ? `No matches for ${escapeHtml(state.filterOwner)}.` : 'No fixtures loaded yet.';
-    return `${sectionHead('Fixtures', meta)}<p class="empty">${empty}</p>`;
+    return `${sectionHead('Fixtures', meta)}${fixtureJumpControls()}<p class="empty">${empty}</p>`;
   }
 
-  const liveMatches = days.flatMap((day) => day.matches.filter((match) => match.status === 'live'));
+  const liveMatches = days.flatMap((day) => day.matches
+    .filter((match) => match.status === 'live')
+    .map((match) => ({ match, fallbackDate: day.date })));
   const upcomingAndFinishedDays = days
     .map((day) => ({
       date: day.date,
@@ -544,13 +619,158 @@ function screenFixtures() {
         <h3 class="sw-live-now__title">Live now</h3>
         <span class="sw-live-now__count">${liveMatches.length} ${liveMatches.length === 1 ? 'match' : 'matches'} in play</span>
       </div>
-      <div class="sw-day__list">${liveMatches.map(fixtureRow).join('')}</div>
+      <div class="sw-day__list">${liveMatches.map(({ match, fallbackDate }) => fixtureRow(match, fallbackDate)).join('')}</div>
     </section>`
     : '';
 
   const list = upcomingAndFinishedDays.map(fixtureDaySection).join('');
 
-  return `${sectionHead('Fixtures', meta)}${liveNow}${list}`;
+  return `${sectionHead('Fixtures', meta)}${fixtureJumpControls()}${liveNow}${list}`;
+}
+
+function renderedFixtureCandidates() {
+  return Array.from(elements.screen.querySelectorAll('.sw-fix[data-fixture-status]'))
+    .map((element, index) => {
+      const date = parseFixtureDate(element.dataset.fixtureUtcDate || element.dataset.fixtureDate);
+
+      if (!date) {
+        return null;
+      }
+
+      return {
+        element,
+        index,
+        date,
+        status: normaliseFixtureStatus(element.dataset.fixtureStatus)
+      };
+    })
+    .filter(Boolean);
+}
+
+function selectFixtureCandidate(candidates) {
+  const today = new Date();
+  const tomorrowStart = addDays(startOfLocalDay(today), 1);
+  const liveToday = candidates
+    .filter((candidate) => candidate.status === 'live' && isSameLocalDay(candidate.date, today))
+    .sort(compareFixtureCandidatesAsc)[0];
+
+  if (liveToday) {
+    return liveToday;
+  }
+
+  const scheduledToday = candidates
+    .filter((candidate) => candidate.status === 'scheduled' && isSameLocalDay(candidate.date, today))
+    .sort(compareFixtureCandidatesAsc)[0];
+
+  if (scheduledToday) {
+    return scheduledToday;
+  }
+
+  const nextScheduled = candidates
+    .filter((candidate) => candidate.status === 'scheduled' && candidate.date >= tomorrowStart)
+    .sort(compareFixtureCandidatesAsc)[0];
+
+  if (nextScheduled) {
+    return nextScheduled;
+  }
+
+  return candidates
+    .filter((candidate) => candidate.status === 'finished')
+    .sort(compareFixtureCandidatesDesc)[0] || null;
+}
+
+function renderedDateSectionCandidates() {
+  return Array.from(elements.screen.querySelectorAll('[data-fixture-date-section]'))
+    .map((element, index) => {
+      const date = parseFixtureDate(element.dataset.date);
+
+      if (!date) {
+        return null;
+      }
+
+      return { element, index, date };
+    })
+    .filter(Boolean);
+}
+
+function selectDateSectionCandidate(candidates) {
+  const today = new Date();
+  const tomorrowStart = addDays(startOfLocalDay(today), 1);
+  const todaySection = candidates
+    .filter((candidate) => isSameLocalDay(candidate.date, today))
+    .sort(compareFixtureCandidatesAsc)[0];
+
+  if (todaySection) {
+    return todaySection;
+  }
+
+  const nextSection = candidates
+    .filter((candidate) => candidate.date >= tomorrowStart)
+    .sort(compareFixtureCandidatesAsc)[0];
+
+  if (nextSection) {
+    return nextSection;
+  }
+
+  return candidates.sort(compareFixtureCandidatesDesc)[0] || null;
+}
+
+function setFixtureJumpMessage(message) {
+  const messageElement = elements.screen.querySelector('#fixture-jump-message');
+
+  if (!messageElement) {
+    return;
+  }
+
+  if (fixtureJumpMessageTimer !== null) {
+    window.clearTimeout(fixtureJumpMessageTimer);
+    fixtureJumpMessageTimer = null;
+  }
+
+  messageElement.textContent = message;
+
+  if (message) {
+    fixtureJumpMessageTimer = window.setTimeout(() => {
+      if (messageElement.isConnected) {
+        messageElement.textContent = '';
+      }
+      fixtureJumpMessageTimer = null;
+    }, 2200);
+  }
+}
+
+function highlightFixtureJumpTarget(element) {
+  elements.screen.querySelectorAll('.sw-jump-highlight').forEach((target) => {
+    target.classList.remove('sw-jump-highlight');
+  });
+
+  if (fixtureJumpHighlightTimer !== null) {
+    window.clearTimeout(fixtureJumpHighlightTimer);
+    fixtureJumpHighlightTimer = null;
+  }
+
+  element.classList.add('sw-jump-highlight');
+  fixtureJumpHighlightTimer = window.setTimeout(() => {
+    if (element.isConnected) {
+      element.classList.remove('sw-jump-highlight');
+    }
+    fixtureJumpHighlightTimer = null;
+  }, 2000);
+}
+
+function jumpToRelevantFixture() {
+  const fixtureTarget = selectFixtureCandidate(renderedFixtureCandidates());
+  const dateSectionTarget = fixtureTarget ? null : selectDateSectionCandidate(renderedDateSectionCandidates());
+  const target = fixtureTarget?.element || dateSectionTarget?.element || null;
+
+  if (!target) {
+    setFixtureJumpMessage('No fixtures available yet.');
+    return;
+  }
+
+  setFixtureJumpMessage('');
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  highlightFixtureJumpTarget(target);
 }
 
 function normaliseBracketSlot(slotOrName, placeholder) {
@@ -838,6 +1058,13 @@ elements.tabs.addEventListener('click', (event) => {
 });
 
 elements.screen.addEventListener('click', (event) => {
+  const jumpButton = event.target.closest('#fixture-jump-button');
+
+  if (jumpButton) {
+    jumpToRelevantFixture();
+    return;
+  }
+
   const main = event.target.closest('.sw-rowcard__main');
 
   if (!main) {
