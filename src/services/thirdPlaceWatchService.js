@@ -2,8 +2,8 @@ const thirdPlaceAnnexC = require('../data/thirdPlaceAnnexC');
 const { buildQualificationProjection } = require('./qualificationService');
 
 const DISPLAY_FALLBACK_WARNING = 'Some third-place rankings use a display fallback because conduct/FIFA ranking tie-break data is unavailable.';
-const ANNEX_C_PENDING_WARNING = 'Annexe C mapping is pending for the current selected third-place groups.';
-const GROUPING_NOTE = 'Grouping leader is for monitoring only. The actual slot is assigned by Annexe C.';
+const ANNEX_C_PENDING_WARNING = 'The official third-place slot mapping is pending for the current selected third-place groups.';
+const GROUPING_NOTE = 'Grouping leader is for monitoring only. The official slot is assigned by the third-place rules.';
 
 const GROUPING_CARDS = Object.freeze([
   Object.freeze({
@@ -329,7 +329,7 @@ function buildThirdPlaceWatchDebug({
       grouping.annexeCMappedTeam ||
       (grouping.rows || []).some((row) => row.isAnnexeCMappedTeam)
     ) {
-      bracketErrors.push(`Grouping ${grouping.matchNumber} marks an Annexe C team while mapping is missing.`);
+      bracketErrors.push(`Grouping ${grouping.matchNumber} marks an official slot team while mapping is missing.`);
     }
   });
 

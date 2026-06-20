@@ -90,7 +90,7 @@ function renderWarnings(data) {
     data.annexCMappingStatus === 'missing_combination' ||
     (data.groupings || []).some((grouping) => grouping.annexCMappingStatus === 'missing_combination')
   ) {
-    panels.push('<section class="tp-alert tp-alert--pending"><h3>Pending Annexe C mapping</h3><p>No team is being marked as the Annexe C slot team until the current selected third-place combination has a mapping.</p></section>');
+    panels.push('<section class="tp-alert tp-alert--pending"><h3>Pending official slot</h3><p>No team is being marked as the official slot team until the current selected third-place combination has a mapping.</p></section>');
   }
 
   return panels.length ? `<div class="tp-alerts">${panels.join('')}</div>` : '';
@@ -157,7 +157,7 @@ function renderGroupingBadges(row) {
   }
 
   if (row.isAnnexeCMappedTeam) {
-    badges.push('<span class="tp-badge tp-badge--annex">Annexe C slot as it stands</span>');
+    badges.push('<span class="tp-badge tp-badge--annex">Official slot as it stands</span>');
   }
 
   if (row.unresolvedTie) {
@@ -182,8 +182,8 @@ function renderGroupingRows(rows) {
 
 function renderGroupingCard(grouping) {
   const annexState = grouping.annexCMappingStatus === 'mapped' && grouping.annexeCMappedTeam
-    ? `<span class="tp-card__annex">Annexe C slot as it stands: ${escapeHtml(grouping.annexeCMappedSource)} ${escapeHtml(grouping.annexeCMappedTeam.country)}</span>`
-    : '<span class="tp-card__pending">Pending Annexe C mapping</span>';
+    ? `<span class="tp-card__annex">Official slot as it stands: ${escapeHtml(grouping.annexeCMappedSource)} ${escapeHtml(grouping.annexeCMappedTeam.country)}</span>`
+    : '<span class="tp-card__pending">Pending official slot</span>';
 
   return `<article class="tp-card" id="${escapeHtml(grouping.id)}">
     <header class="tp-card__head">

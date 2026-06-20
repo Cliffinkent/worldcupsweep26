@@ -142,7 +142,7 @@ assert.deepEqual(
 );
 
 watch.groupings.forEach((grouping) => {
-  assert.equal(grouping.note, 'Grouping leader is for monitoring only. The actual slot is assigned by Annexe C.');
+  assert.equal(grouping.note, 'Grouping leader is for monitoring only. The official slot is assigned by the third-place rules.');
 
   const bracketMatch = projection.roundOf32.find((match) => match.matchNumber === grouping.matchNumber);
   const bracketThirdPlaceSlot = [bracketMatch.slotA, bracketMatch.slotB]
