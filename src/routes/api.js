@@ -5,6 +5,7 @@ const {
   getGroupsData,
   getFixturesData,
   getBracketData,
+  getQualificationDebugData,
   getTableSourceDebug,
   refreshData,
   getProviderStatus
@@ -89,6 +90,10 @@ router.get('/bracket', asyncHandler(async (req, res) => {
 
 router.get('/debug/table-source', asyncHandler(async (req, res) => {
   res.json(await getTableSourceDebug());
+}));
+
+router.get('/debug/qualification', asyncHandler(async (req, res) => {
+  res.json(await getQualificationDebugData());
 }));
 
 router.post('/refresh', refreshLimiter, asyncHandler(async (req, res) => {

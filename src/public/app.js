@@ -201,6 +201,17 @@ function renderBroadcast(broadcast) {
 }
 
 function getFixtureTeam(apiName) {
+  if (apiName && typeof apiName === 'object') {
+    return {
+      id: apiName.id || apiName.teamId || null,
+      name: apiName.country || apiName.name || 'TBC',
+      country: apiName.country || apiName.name || 'TBC',
+      iso: apiName.iso || resolveIso(apiName),
+      owner: apiName.owner || '',
+      unresolvedTie: Boolean(apiName.unresolvedTie)
+    };
+  }
+
   const { byName } = getTeamIndex();
   const team = byName.get(normaliseTeamName(apiName));
 
@@ -542,13 +553,40 @@ function screenFixtures() {
   return `${sectionHead('Fixtures', meta)}${liveNow}${list}`;
 }
 
-function bracketTieSide(name, placeholder) {
-  if (!name) {
-    return `<div class="sw-tie__team sw-tie__team--tbc">${escapeHtml(placeholder || 'To be confirmed')}</div>`;
+function normaliseBracketSlot(slotOrName, placeholder) {
+  if (slotOrName && typeof slotOrName === 'object' && ('team' in slotOrName || 'label' in slotOrName)) {
+    return slotOrName;
   }
 
-  const team = getFixtureTeam(name);
-  return `<div class="sw-tie__team">${renderFlag(team, 22)}<span class="sw-tie__name">${escapeHtml(team.country)}</span><span class="sw-tie__owner">${escapeHtml(team.owner || '')}</span></div>`;
+  return {
+    label: placeholder || 'To be confirmed',
+    placeholder: placeholder || 'To be confirmed',
+    team: slotOrName ? getFixtureTeam(slotOrName) : null,
+    projectionType: null,
+    unresolvedTie: false
+  };
+}
+
+function bracketSlotTeam(slot) {
+  return slot?.team ? getFixtureTeam(slot.team) : null;
+}
+
+function bracketTieSide(slotOrName, placeholder) {
+  const slot = normaliseBracketSlot(slotOrName, placeholder);
+  const team = bracketSlotTeam(slot);
+
+  if (!team) {
+    return `<div class="sw-tie__team sw-tie__team--tbc">${escapeHtml(slot.placeholder || slot.label || 'To be confirmed')}</div>`;
+  }
+
+  const projection = slot.projectionType === 'as_it_stands'
+    ? '<span class="sw-tie__tag">as it stands</span>'
+    : '';
+  const unresolved = slot.unresolvedTie || team.unresolvedTie
+    ? '<span class="sw-tie__tag sw-tie__tag--warn">Tie-break unresolved</span>'
+    : '';
+
+  return `<div class="sw-tie__team">${renderFlag(team, 22)}<span class="sw-tie__main"><span class="sw-tie__line"><span class="sw-tie__name">${escapeHtml(team.country)}</span>${projection}</span><span class="sw-tie__owner">${escapeHtml(team.owner || '')}</span>${unresolved}</span></div>`;
 }
 
 const BRACKET_WINGS = {
@@ -567,15 +605,28 @@ const BRACKET_WINGS = {
 };
 
 function bracketMatch(match, side = '') {
-  const tbc = !match.homeTeam && !match.awayTeam;
-  const mine = (match.homeTeam && getFixtureTeam(match.homeTeam).owner === state.filterOwner)
-    || (match.awayTeam && getFixtureTeam(match.awayTeam).owner === state.filterOwner);
+  const slotA = match.slotA || {
+    label: match.homePlaceholder,
+    placeholder: match.homePlaceholder,
+    team: match.homeTeam
+  };
+  const slotB = match.slotB || {
+    label: match.awayPlaceholder,
+    placeholder: match.awayPlaceholder,
+    team: match.awayTeam
+  };
+  const teamA = bracketSlotTeam(slotA);
+  const teamB = bracketSlotTeam(slotB);
+  const tbc = !teamA && !teamB;
+  const mine = Boolean(state.filterOwner) && (
+    teamA?.owner === state.filterOwner || teamB?.owner === state.filterOwner
+  );
   const number = match.matchNumber ? `<span class="sw-tie__number">M${match.matchNumber}</span>` : '';
 
   return `<div class="sw-tie${side ? ` sw-tie--${side}` : ''}${tbc ? ' sw-tie--tbc' : ''}${mine ? ' sw-tie--mine' : ''}">
     ${number}
-    ${bracketTieSide(match.homeTeam, match.homePlaceholder)}
-    ${bracketTieSide(match.awayTeam, match.awayPlaceholder)}
+    ${bracketTieSide(slotA, match.homePlaceholder)}
+    ${bracketTieSide(slotB, match.awayPlaceholder)}
   </div>`;
 }
 

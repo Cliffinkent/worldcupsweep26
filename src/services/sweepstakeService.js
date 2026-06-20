@@ -14,6 +14,7 @@ const {
   buildTeamLookup,
   findTeamByName
 } = require('./tableCalculator');
+const { buildBracketProjection } = require('./bracketProjectionService');
 
 const KNOCKOUT_ROUNDS = new Set([
   'Round of 32',
@@ -345,17 +346,32 @@ async function getSweepstakeData() {
   const { groupTables, groupTableSource } = resolveGroupTables(fixtures, standings);
   const players = buildParticipantSummaries(groupTables, fixtures, liveFixtures);
   const providerStatus = getProviderStatus();
+  const generatedAt = new Date().toISOString();
+  const bracketProjection = buildBracketProjection({
+    groupTables,
+    fixtures,
+    rounds,
+    providerStatus,
+    generatedAt
+  });
 
   return {
-    generatedAt: new Date().toISOString(),
-    lastUpdated: new Date().toISOString(),
+    generatedAt,
+    lastUpdated: generatedAt,
     providerStatus,
     groupTableSource,
+    projectionStatus: bracketProjection.projectionStatus,
+    thirdPlaceProjectionWarning: bracketProjection.thirdPlaceProjectionWarning,
+    thirdPlaceGroupsProjectedToQualify: bracketProjection.thirdPlaceGroupsProjectedToQualify,
+    annexCKey: bracketProjection.annexCKey,
+    annexCMappingStatus: bracketProjection.annexCMappingStatus,
     teams: sweepstakeTeams,
     groups,
     groupTables,
     fixtures: groupFixturesByDate(fixtures),
-    bracket: attachFixturesToBracket(fixtures, rounds),
+    roundOf32: bracketProjection.roundOf32,
+    laterRounds: bracketProjection.laterRounds,
+    bracket: bracketProjection.bracket,
     players
   };
 }
@@ -396,17 +412,51 @@ async function getFixturesData() {
 }
 
 async function getBracketData() {
-  const [rawFixtures, rounds] = await Promise.all([
+  const [rawFixtures, standings, rounds] = await Promise.all([
     getWorldCupFixtures(),
+    getWorldCupStandings(),
     getWorldCupRounds()
   ]);
   const fixtures = attachBroadcasts(rawFixtures);
+  const { groupTables, groupTableSource } = resolveGroupTables(fixtures, standings);
+  const generatedAt = new Date().toISOString();
+  const projection = buildBracketProjection({
+    groupTables,
+    fixtures,
+    rounds,
+    providerStatus: getProviderStatus(),
+    generatedAt
+  });
 
   return {
-    generatedAt: new Date().toISOString(),
-    lastUpdated: new Date().toISOString(),
+    ...projection,
+    groupTableSource
+  };
+}
+
+async function getQualificationDebugData() {
+  const [rawFixtures, standings, rounds] = await Promise.all([
+    getWorldCupFixtures(),
+    getWorldCupStandings(),
+    getWorldCupRounds()
+  ]);
+  const fixtures = attachBroadcasts(rawFixtures);
+  const { groupTables, groupTableSource } = resolveGroupTables(fixtures, standings);
+  const generatedAt = new Date().toISOString();
+  const projection = buildBracketProjection({
+    groupTables,
+    fixtures,
+    rounds,
     providerStatus: getProviderStatus(),
-    bracket: attachFixturesToBracket(fixtures, rounds)
+    generatedAt
+  });
+
+  return {
+    generatedAt,
+    lastUpdated: generatedAt,
+    providerStatus: getProviderStatus(),
+    groupTableSource,
+    ...projection.qualificationDebug
   };
 }
 
@@ -422,6 +472,14 @@ async function refreshData() {
   const liveFixtures = attachBroadcasts(rawLiveFixtures);
   const { groupTables, groupTableSource } = resolveGroupTables(fixtures, standings);
   const groupsCountAL = groupTables.filter((group) => /^[A-L]$/.test(group.group)).length;
+  const generatedAt = new Date().toISOString();
+  const bracketProjection = buildBracketProjection({
+    groupTables,
+    fixtures,
+    rounds,
+    providerStatus,
+    generatedAt
+  });
 
   console.log('world-cup refresh', {
     fixtureCount: fixtures.length,
@@ -431,14 +489,21 @@ async function refreshData() {
   });
 
   return {
-    refreshedAt: new Date().toISOString(),
-    lastUpdated: new Date().toISOString(),
+    refreshedAt: generatedAt,
+    lastUpdated: generatedAt,
     providerStatus,
     groupTableSource,
+    projectionStatus: bracketProjection.projectionStatus,
+    thirdPlaceProjectionWarning: bracketProjection.thirdPlaceProjectionWarning,
+    thirdPlaceGroupsProjectedToQualify: bracketProjection.thirdPlaceGroupsProjectedToQualify,
+    annexCKey: bracketProjection.annexCKey,
+    annexCMappingStatus: bracketProjection.annexCMappingStatus,
     fixtureCount: fixtures.length,
     fixtures: groupFixturesByDate(fixtures),
     groupTables,
-    bracket: attachFixturesToBracket(fixtures, rounds),
+    roundOf32: bracketProjection.roundOf32,
+    laterRounds: bracketProjection.laterRounds,
+    bracket: bracketProjection.bracket,
     players: buildParticipantSummaries(groupTables, fixtures, liveFixtures)
   };
 }
@@ -448,6 +513,7 @@ module.exports = {
   getGroupsData,
   getFixturesData,
   getBracketData,
+  getQualificationDebugData,
   getTableSourceDebug,
   refreshData,
   getProviderStatus,

@@ -1,3 +1,5 @@
+const roundOf32Slots = require('./roundOf32Slots');
+
 function slot(matchNumber, homePlaceholder, awayPlaceholder) {
   return {
     id: `m${matchNumber}`,
@@ -10,24 +12,7 @@ function slot(matchNumber, homePlaceholder, awayPlaceholder) {
 const knockoutSlots = [
   {
     round: 'Round of 32',
-    slots: [
-      slot(73, 'Runner-up Group A', 'Runner-up Group B'),
-      slot(74, 'Winner Group E', '3rd Group A/B/C/D/F'),
-      slot(75, 'Winner Group F', 'Runner-up Group C'),
-      slot(76, 'Winner Group C', 'Runner-up Group F'),
-      slot(77, 'Winner Group I', '3rd Group C/D/F/G/H'),
-      slot(78, 'Runner-up Group E', 'Runner-up Group I'),
-      slot(79, 'Winner Group A', '3rd Group C/E/F/H/I'),
-      slot(80, 'Winner Group L', '3rd Group E/H/I/J/K'),
-      slot(81, 'Winner Group D', '3rd Group B/E/F/I/J'),
-      slot(82, 'Winner Group G', '3rd Group A/E/H/I/J'),
-      slot(83, 'Runner-up Group K', 'Runner-up Group L'),
-      slot(84, 'Winner Group H', 'Runner-up Group J'),
-      slot(85, 'Winner Group B', '3rd Group E/F/G/I/J'),
-      slot(86, 'Winner Group J', 'Runner-up Group H'),
-      slot(87, 'Winner Group K', '3rd Group D/E/I/J/L'),
-      slot(88, 'Runner-up Group D', 'Runner-up Group G')
-    ]
+    slots: roundOf32Slots.map((match) => slot(match.matchNumber, match.slotA.label, match.slotB.label))
   },
   {
     round: 'Round of 16',
