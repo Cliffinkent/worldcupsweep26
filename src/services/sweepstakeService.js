@@ -15,6 +15,11 @@ const {
   findTeamByName
 } = require('./tableCalculator');
 const { buildBracketProjection } = require('./bracketProjectionService');
+const { buildQualificationProjection } = require('./qualificationService');
+const {
+  buildThirdPlaceWatch,
+  buildThirdPlaceWatchDebug
+} = require('./thirdPlaceWatchService');
 
 const KNOCKOUT_ROUNDS = new Set([
   'Round of 32',
@@ -434,6 +439,54 @@ async function getBracketData() {
   };
 }
 
+async function getThirdPlaceWatchData() {
+  const [rawFixtures, standings] = await Promise.all([
+    getWorldCupFixtures(),
+    getWorldCupStandings()
+  ]);
+  const fixtures = attachBroadcasts(rawFixtures);
+  const { groupTables } = resolveGroupTables(fixtures, standings);
+  const generatedAt = new Date().toISOString();
+
+  return buildThirdPlaceWatch({
+    groupTables,
+    providerStatus: getProviderStatus(),
+    generatedAt
+  });
+}
+
+async function getThirdPlaceWatchDebugData() {
+  const [rawFixtures, standings, rounds] = await Promise.all([
+    getWorldCupFixtures(),
+    getWorldCupStandings(),
+    getWorldCupRounds()
+  ]);
+  const fixtures = attachBroadcasts(rawFixtures);
+  const { groupTables } = resolveGroupTables(fixtures, standings);
+  const generatedAt = new Date().toISOString();
+  const providerStatus = getProviderStatus();
+  const qualification = buildQualificationProjection(groupTables);
+  const bracketProjection = buildBracketProjection({
+    groupTables,
+    fixtures,
+    rounds,
+    providerStatus,
+    generatedAt
+  });
+  const watch = buildThirdPlaceWatch({
+    groupTables,
+    providerStatus,
+    generatedAt
+  });
+
+  return buildThirdPlaceWatchDebug({
+    watch,
+    qualification,
+    bracketProjection,
+    generatedAt
+  });
+}
+
 async function getQualificationDebugData() {
   const [rawFixtures, standings, rounds] = await Promise.all([
     getWorldCupFixtures(),
@@ -513,6 +566,8 @@ module.exports = {
   getGroupsData,
   getFixturesData,
   getBracketData,
+  getThirdPlaceWatchData,
+  getThirdPlaceWatchDebugData,
   getQualificationDebugData,
   getTableSourceDebug,
   refreshData,

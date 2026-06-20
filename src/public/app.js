@@ -828,7 +828,7 @@ async function refreshSweepstake() {
 elements.tabs.addEventListener('click', (event) => {
   const button = event.target.closest('.tab');
 
-  if (!button) {
+  if (!button || !button.dataset.screen) {
     return;
   }
 

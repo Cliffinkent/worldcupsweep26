@@ -2,6 +2,11 @@ const assert = require('node:assert/strict');
 const sweepstakeTeams = require('../src/data/sweepstakeTeams');
 const thirdPlaceAnnexC = require('../src/data/thirdPlaceAnnexC');
 const { buildBracketProjection } = require('../src/services/bracketProjectionService');
+const { buildQualificationProjection } = require('../src/services/qualificationService');
+const {
+  buildThirdPlaceWatch,
+  buildThirdPlaceWatchDebug
+} = require('../src/services/thirdPlaceWatchService');
 
 const QUALIFYING_THIRD_PLACE_GROUPS = 'A,B,C,D,E,F,G,H';
 const THIRD_PLACE_STATS = {
@@ -103,6 +108,18 @@ const rankedThirdPlacedTeams = projection.qualificationDebug.thirdPlacedTeamsRan
 const czechiaThirdPlaceSlot = projection.roundOf32
   .flatMap((match) => [match.slotA, match.slotB])
   .find((slot) => slot.source === '3A');
+const qualification = buildQualificationProjection(groupTables);
+const watch = buildThirdPlaceWatch({
+  groupTables,
+  providerStatus: { providerStatus: 'test' },
+  generatedAt: '2026-06-20T00:00:00.000Z'
+});
+const watchDebug = buildThirdPlaceWatchDebug({
+  watch,
+  qualification,
+  bracketProjection: projection,
+  generatedAt: '2026-06-20T00:00:00.000Z'
+});
 
 assert.equal(match79.slotA.label, 'Winner Group A');
 assert.equal(match79.slotA.team.country, 'Mexico');
@@ -115,7 +132,52 @@ assert.equal(projection.annexCKey, QUALIFYING_THIRD_PLACE_GROUPS);
 assert.equal(projection.annexCMappingStatus, 'mapped');
 assert.equal(czechiaThirdPlaceSlot.team.country, 'Czechia');
 
+assert.equal(watch.globalThirdPlaceTable.length, 12);
+assert.equal(watch.groupings.length, 8);
+assert.equal(watch.groupings.every((grouping) => grouping.rows.length === 5), true);
+assert.deepEqual(watch.selectedBestThirdGroups, projection.qualificationDebug.thirdPlaceGroupsProjectedToQualify);
+assert.deepEqual(
+  watch.globalThirdPlaceTable.slice(0, 8).map((row) => row.group),
+  watch.selectedBestThirdGroups
+);
+
+watch.groupings.forEach((grouping) => {
+  assert.equal(grouping.note, 'Grouping leader is for monitoring only. The official slot is assigned by the third-place rules.');
+
+  const bracketMatch = projection.roundOf32.find((match) => match.matchNumber === grouping.matchNumber);
+  const bracketThirdPlaceSlot = [bracketMatch.slotA, bracketMatch.slotB]
+    .find((slot) => slot.source === grouping.annexeCMappedSource);
+
+  assert.equal(grouping.annexCMappingStatus, 'mapped');
+  assert.ok(watch.selectedBestThirdGroups.includes(grouping.annexeCMappedSource.slice(1)));
+  assert.ok(bracketThirdPlaceSlot, `missing bracket slot for ${grouping.matchNumber}`);
+  assert.equal(grouping.annexeCMappedTeam.country, bracketThirdPlaceSlot.team.country);
+
+  if (grouping.currentGroupingLeader.source !== grouping.annexeCMappedSource) {
+    assert.equal(
+      [bracketMatch.slotA, bracketMatch.slotB].some((slot) => slot.source === grouping.currentGroupingLeader.source),
+      false,
+      `grouping leader should not drive bracket assignment for match ${grouping.matchNumber}`
+    );
+  }
+});
+
+assert.equal(watchDebug.passed, true, watchDebug.errors.join('\n'));
+assert.deepEqual(watchDebug.consistencyChecks, {
+  agreesWithQualificationService: true,
+  agreesWithBracketProjection: true,
+  topEightMatchSelectedGroups: true,
+  allGroupingCardsHaveFiveRows: true,
+  frontendSafePayload: true
+});
+
 const missingMappingProjection = buildBracketProjection({
+  groupTables,
+  providerStatus: { providerStatus: 'test' },
+  generatedAt: '2026-06-20T00:00:00.000Z',
+  annexCMap: {}
+});
+const missingMappingWatch = buildThirdPlaceWatch({
   groupTables,
   providerStatus: { providerStatus: 'test' },
   generatedAt: '2026-06-20T00:00:00.000Z',
@@ -129,5 +191,12 @@ assert.equal(missingMappingProjection.annexCKey, QUALIFYING_THIRD_PLACE_GROUPS);
 assert.equal(missingMappingProjection.annexCMappingStatus, 'missing_combination');
 assert.equal(pendingThirdPlaceSlots.length, 8);
 assert.equal(missingMappingProjection.roundOf32.find((match) => match.matchNumber === 79).slotA.team.country, 'Mexico');
+assert.equal(missingMappingWatch.annexCMappingStatus, 'missing_combination');
+assert.equal(missingMappingWatch.groupings.every((grouping) => grouping.annexeCMappedSource === null), true);
+assert.equal(missingMappingWatch.groupings.every((grouping) => grouping.annexeCMappedTeam === null), true);
+assert.equal(
+  missingMappingWatch.groupings.every((grouping) => grouping.rows.every((row) => row.isAnnexeCMappedTeam === false)),
+  true
+);
 
 console.log('bracket projection assertions passed');
