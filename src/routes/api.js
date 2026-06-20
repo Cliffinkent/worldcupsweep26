@@ -5,6 +5,8 @@ const {
   getGroupsData,
   getFixturesData,
   getBracketData,
+  getThirdPlaceWatchData,
+  getThirdPlaceWatchDebugData,
   getQualificationDebugData,
   getTableSourceDebug,
   refreshData,
@@ -88,12 +90,20 @@ router.get('/bracket', asyncHandler(async (req, res) => {
   res.json(await getBracketData());
 }));
 
+router.get('/third-place-watch', asyncHandler(async (req, res) => {
+  res.json(await getThirdPlaceWatchData());
+}));
+
 router.get('/debug/table-source', asyncHandler(async (req, res) => {
   res.json(await getTableSourceDebug());
 }));
 
 router.get('/debug/qualification', asyncHandler(async (req, res) => {
   res.json(await getQualificationDebugData());
+}));
+
+router.get('/debug/third-place-watch', asyncHandler(async (req, res) => {
+  res.json(await getThirdPlaceWatchDebugData());
 }));
 
 router.post('/refresh', refreshLimiter, asyncHandler(async (req, res) => {

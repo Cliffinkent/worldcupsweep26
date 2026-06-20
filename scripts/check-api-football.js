@@ -91,8 +91,6 @@ function getKeyDiagnostics(rawValue, normalisedKey) {
   return {
     hasKey: Boolean(normalisedKey),
     keyLength: normalisedKey.length,
-    first4: normalisedKey.slice(0, 4) || '(none)',
-    last4: normalisedKey.slice(-4) || '(none)',
     containsWhitespace: /\s/.test(rawValue || ''),
     baseUrl: API_BASE_URL,
     authMode: AUTH_MODE
@@ -115,8 +113,6 @@ function printKeyDiagnostics(diagnostics) {
   console.log('API-Football auth diagnostics');
   console.log(`Has key: ${diagnostics.hasKey}`);
   console.log(`Key length: ${diagnostics.keyLength}`);
-  console.log(`Key first 4: ${diagnostics.first4}`);
-  console.log(`Key last 4: ${diagnostics.last4}`);
   console.log(`Contains whitespace: ${diagnostics.containsWhitespace}`);
   console.log(`Base URL: ${diagnostics.baseUrl}`);
   console.log(`Auth mode: ${diagnostics.authMode}`);

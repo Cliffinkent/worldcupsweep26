@@ -4,6 +4,7 @@
   "description": "MVP app for tracking a 2026 World Cup sweepstake.",
   "main": "server.js",
   "scripts": {
+    "audit:bracket": "node scripts/assert-bracket-projection.js",
     "check:api-football": "node scripts/check-api-football.js",
     "dev": "node --watch server.js",
     "test": "node scripts/assert-table-calculation.js && node scripts/assert-bracket-projection.js",

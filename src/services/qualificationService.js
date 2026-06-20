@@ -35,6 +35,19 @@ function getFairPlayScore(row) {
   return Number.isFinite(number) ? number : null;
 }
 
+function getFifaRanking(row, localTeam) {
+  const value = row.fifaRanking
+    ?? row.fifaRank
+    ?? row.fifaRankingPosition
+    ?? row.worldRanking
+    ?? row.worldRank
+    ?? localTeam?.fifaRanking
+    ?? localTeam?.fifaRank
+    ?? localTeam?.worldRanking;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 function findLocalTeam(row) {
   if (row.teamId && teamsById.has(row.teamId)) {
     return teamsById.get(row.teamId);
@@ -52,6 +65,7 @@ function toProjectedTeam(row, group, groupPosition, groupMatchCount, projectionS
   const country = row.country || row.team || localTeam?.country || 'TBC';
   const iso = row.iso || localTeam?.iso || null;
   const fairPlayScore = getFairPlayScore(row);
+  const fifaRanking = getFifaRanking(row, localTeam);
 
   return {
     id: row.teamId || localTeam?.id || null,
@@ -64,11 +78,16 @@ function toProjectedTeam(row, group, groupPosition, groupMatchCount, projectionS
     group,
     groupPosition,
     played: toNumber(row.played),
+    wins: toNumber(row.wins ?? row.won),
+    draws: toNumber(row.draws ?? row.drawn),
+    losses: toNumber(row.losses ?? row.lost),
     points: toNumber(row.points),
     goalsFor: toNumber(row.goalsFor),
     goalsAgainst: toNumber(row.goalsAgainst),
     goalDifference: toNumber(row.goalDifference),
     fairPlayScore,
+    teamConductScore: fairPlayScore,
+    fifaRanking,
     provisional: groupMatchCount === 0,
     unresolvedTie: false,
     projectionType: projectionStatus === 'confirmed' ? 'confirmed' : 'as_it_stands'
@@ -111,6 +130,38 @@ function tieBucketKey(team) {
   ].join('|');
 }
 
+function compareOfficialTieBreakers(a, b) {
+  if (
+    a.fairPlayScore !== null &&
+    b.fairPlayScore !== null &&
+    a.fairPlayScore !== b.fairPlayScore
+  ) {
+    return b.fairPlayScore - a.fairPlayScore;
+  }
+
+  if (
+    a.fifaRanking !== null &&
+    b.fifaRanking !== null &&
+    a.fifaRanking !== b.fifaRanking
+  ) {
+    return a.fifaRanking - b.fifaRanking;
+  }
+
+  return 0;
+}
+
+function officialTieBreakersCanResolve(teams) {
+  const ordered = teams.slice().sort(compareOfficialTieBreakers);
+
+  for (let index = 1; index < ordered.length; index += 1) {
+    if (compareOfficialTieBreakers(ordered[index - 1], ordered[index]) === 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function findUnresolvedThirdPlaceTies(thirdPlacedTeams) {
   const buckets = thirdPlacedTeams.reduce((grouped, team) => {
     const key = tieBucketKey(team);
@@ -126,11 +177,7 @@ function findUnresolvedThirdPlaceTies(thirdPlacedTeams) {
       return;
     }
 
-    const fairPlayScores = teams.map((team) => team.fairPlayScore);
-    const fairPlayCanResolve = fairPlayScores.every((score) => score !== null)
-      && new Set(fairPlayScores).size === teams.length;
-
-    if (fairPlayCanResolve) {
+    if (officialTieBreakersCanResolve(teams)) {
       return;
     }
 
@@ -156,18 +203,11 @@ function findUnresolvedThirdPlaceTies(thirdPlacedTeams) {
 }
 
 function compareThirdPlacedTeams(a, b) {
-  const fairPlayA = a.fairPlayScore;
-  const fairPlayB = b.fairPlayScore;
-
   return (
     b.points - a.points ||
     b.goalDifference - a.goalDifference ||
     b.goalsFor - a.goalsFor ||
-    (
-      fairPlayA !== null && fairPlayB !== null && fairPlayA !== fairPlayB
-        ? fairPlayB - fairPlayA
-        : 0
-    ) ||
+    compareOfficialTieBreakers(a, b) ||
     a.country.localeCompare(b.country)
   );
 }
