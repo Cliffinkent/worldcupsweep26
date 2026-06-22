@@ -115,11 +115,11 @@ function formatKickOffTime(value) {
 }
 
 function normaliseFixtureStatus(status) {
-  if (status === 'live' || status === 'finished') {
+  if (['scheduled', 'live', 'finished', 'unavailable', 'unknown'].includes(status)) {
     return status;
   }
 
-  return 'scheduled';
+  return 'unknown';
 }
 
 function fixtureDateValue(match, fallbackDate) {
@@ -299,7 +299,7 @@ function getFixtureStats() {
 
   (state.data?.fixtures || []).forEach((day) => {
     (day.matches || []).forEach((match) => {
-      if (match.status === 'live') {
+      if (isFixtureLiveSectionEligible(match)) {
         liveCount += 1;
       }
 
@@ -349,6 +349,10 @@ function matchInvolvesOwner(match) {
 
   return getFixtureTeam(match.homeTeam).owner === state.filterOwner
     || getFixtureTeam(match.awayTeam).owner === state.filterOwner;
+}
+
+function isFixtureLiveSectionEligible(match) {
+  return match?.isLiveSectionEligible === true;
 }
 
 /* ---------- Primitives (vanilla ports of the design-system components) ---------- */
@@ -537,8 +541,15 @@ function fixtureRow(match, fallbackDate) {
   const home = getFixtureTeam(match.homeTeam);
   const away = getFixtureTeam(match.awayTeam);
   const status = normaliseFixtureStatus(match.status);
-  const live = status === 'live';
+  const live = isFixtureLiveSectionEligible(match);
   const finished = status === 'finished';
+  const statusDetail = match.statusDetail || (
+    live ? 'Live' :
+      finished ? 'Finished' :
+        status === 'scheduled' ? 'Scheduled' :
+          status === 'unavailable' ? 'Unavailable' :
+            'Unknown'
+  );
   const hasScore = match.homeScore !== null && match.homeScore !== undefined
     && match.awayScore !== null && match.awayScore !== undefined;
   const fixtureDate = fixtureCalendarDateValue(match, fallbackDate);
@@ -551,15 +562,20 @@ function fixtureRow(match, fallbackDate) {
 
   let pill = '';
   if (live) {
-    pill = statusPill('live', match.elapsed ? `${match.elapsed}'` : 'Live');
+    const liveLabel = Number.isFinite(match.elapsed)
+      ? `${statusDetail} ${match.elapsed}'`
+      : statusDetail;
+    pill = statusPill('live', liveLabel);
   } else if (finished) {
-    pill = statusPill('ft', 'Full time');
+    pill = statusPill('ft', statusDetail);
   } else if (status === 'scheduled') {
     pill = statusPill('scheduled', formatKickOffTime(match.utcDate));
+  } else if (status === 'unavailable') {
+    pill = statusPill('scheduled', statusDetail, false);
   }
   const broadcast = renderBroadcast(match.broadcast);
 
-  return `<div class="sw-fix${live ? ' sw-fix--live' : ''}" data-fixture-id="${escapeHtml(fixtureId)}" data-fixture-date="${escapeHtml(fixtureDate)}" data-fixture-utc-date="${escapeHtml(fixtureUtcDate)}" data-fixture-status="${escapeHtml(status)}">
+  return `<div class="sw-fix${live ? ' sw-fix--live' : ''}" data-fixture-id="${escapeHtml(fixtureId)}" data-fixture-date="${escapeHtml(fixtureDate)}" data-fixture-utc-date="${escapeHtml(fixtureUtcDate)}" data-fixture-status="${escapeHtml(status)}" data-fixture-live-section-eligible="${live ? 'true' : 'false'}">
     <div class="sw-fix__side sw-fix__side--home">
       <span class="sw-fix__owner">${escapeHtml(home.owner || 'Unassigned')}</span>
       <span class="sw-fix__team">${escapeHtml(home.country)}</span>
@@ -604,14 +620,8 @@ function screenFixtures() {
   }
 
   const liveMatches = days.flatMap((day) => day.matches
-    .filter((match) => match.status === 'live')
+    .filter(isFixtureLiveSectionEligible)
     .map((match) => ({ match, fallbackDate: day.date })));
-  const upcomingAndFinishedDays = days
-    .map((day) => ({
-      date: day.date,
-      matches: day.matches.filter((match) => match.status !== 'live')
-    }))
-    .filter((day) => day.matches.length);
 
   const liveNow = liveMatches.length
     ? `<section class="sw-live-now" aria-label="Live now">
@@ -623,7 +633,7 @@ function screenFixtures() {
     </section>`
     : '';
 
-  const list = upcomingAndFinishedDays.map(fixtureDaySection).join('');
+  const list = days.map(fixtureDaySection).join('');
 
   return `${sectionHead('Fixtures', meta)}${fixtureJumpControls()}${liveNow}${list}`;
 }
@@ -641,7 +651,8 @@ function renderedFixtureCandidates() {
         element,
         index,
         date,
-        status: normaliseFixtureStatus(element.dataset.fixtureStatus)
+        status: normaliseFixtureStatus(element.dataset.fixtureStatus),
+        liveSectionEligible: element.dataset.fixtureLiveSectionEligible === 'true'
       };
     })
     .filter(Boolean);
@@ -651,7 +662,7 @@ function selectFixtureCandidate(candidates) {
   const today = new Date();
   const tomorrowStart = addDays(startOfLocalDay(today), 1);
   const liveToday = candidates
-    .filter((candidate) => candidate.status === 'live' && isSameLocalDay(candidate.date, today))
+    .filter((candidate) => candidate.liveSectionEligible && isSameLocalDay(candidate.date, today))
     .sort(compareFixtureCandidatesAsc)[0];
 
   if (liveToday) {

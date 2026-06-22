@@ -8,6 +8,7 @@ const {
   getThirdPlaceWatchData,
   getThirdPlaceWatchDebugData,
   getQualificationDebugData,
+  getLiveFixturesDebugData,
   getTableSourceDebug,
   refreshData,
   getProviderStatus
@@ -100,6 +101,10 @@ router.get('/debug/table-source', asyncHandler(async (req, res) => {
 
 router.get('/debug/qualification', asyncHandler(async (req, res) => {
   res.json(await getQualificationDebugData());
+}));
+
+router.get('/debug/live-fixtures', asyncHandler(async (req, res) => {
+  res.json(await getLiveFixturesDebugData());
 }));
 
 router.get('/debug/third-place-watch', asyncHandler(async (req, res) => {

@@ -7,7 +7,8 @@ const {
   getWorldCupRounds,
   getLiveWorldCupFixtures,
   refreshWorldCupData,
-  getProviderStatus
+  getProviderStatus,
+  isLiveSectionEligible
 } = require('./footballApiClient');
 const {
   calculateGroupTablesWithDiagnostics,
@@ -241,6 +242,10 @@ function getTodayDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function fixtureIsLiveSectionEligible(fixture) {
+  return fixture?.isLiveSectionEligible === true;
+}
+
 function getLiveTeamIdsPlayingToday(liveFixtures) {
   const lookup = buildTeamLookup(sweepstakeTeams);
   const today = getTodayDate();
@@ -264,11 +269,76 @@ function getLiveTeamIdsPlayingToday(liveFixtures) {
   return liveTeamIds;
 }
 
+function hasFranceOrIraq(fixture) {
+  return [fixture.homeTeam, fixture.awayTeam]
+    .map((team) => String(team || '').toLowerCase())
+    .some((team) => team === 'france' || team === 'iraq');
+}
+
+function compactDebugFixture(fixture) {
+  return {
+    id: fixture.id || null,
+    homeTeam: fixture.homeTeam || null,
+    awayTeam: fixture.awayTeam || null,
+    homeScore: Number.isFinite(fixture.homeScore) ? fixture.homeScore : null,
+    awayScore: Number.isFinite(fixture.awayScore) ? fixture.awayScore : null,
+    status: fixture.status || 'unknown',
+    statusLabel: fixture.statusLabel || null,
+    statusDetail: fixture.statusDetail || null,
+    rawStatus: fixture.rawStatus || null,
+    elapsed: Number.isFinite(fixture.elapsed) ? fixture.elapsed : null,
+    isLiveSectionEligible: fixtureIsLiveSectionEligible(fixture),
+    date: fixture.date || null,
+    utcDate: fixture.utcDate || null
+  };
+}
+
+function mergeFixturesForDebug(fixtures, liveFixtures) {
+  const byId = new Map();
+
+  [...fixtures, ...liveFixtures].forEach((fixture) => {
+    const key = fixture.id || `${fixture.utcDate || fixture.date}:${fixture.homeTeam}:${fixture.awayTeam}`;
+    byId.set(key, fixture);
+  });
+
+  return Array.from(byId.values());
+}
+
+function buildLiveFixturesDebug(fixtures, liveFixtures) {
+  const mergedFixtures = mergeFixturesForDebug(fixtures, liveFixtures);
+  const liveFixtureIds = new Set(
+    mergedFixtures
+      .filter(fixtureIsLiveSectionEligible)
+      .map((fixture) => fixture.id)
+      .filter(Boolean)
+  );
+  const fixturesForDebug = mergedFixtures
+    .filter((fixture) => fixtureIsLiveSectionEligible(fixture) || hasFranceOrIraq(fixture))
+    .sort((a, b) => String(a.utcDate || '').localeCompare(String(b.utcDate || '')))
+    .map(compactDebugFixture);
+  const ignoredInProgressCandidates = mergedFixtures
+    .filter((fixture) => isLiveSectionEligible(fixture.status, fixture.rawStatus) && !fixtureIsLiveSectionEligible(fixture))
+    .map((fixture) => ({
+      id: fixture.id || null,
+      homeTeam: fixture.homeTeam || null,
+      awayTeam: fixture.awayTeam || null,
+      rawStatus: fixture.rawStatus || null,
+      reason: 'not_live_section_eligible'
+    }));
+
+  return {
+    generatedAt: new Date().toISOString(),
+    liveFixtureCount: liveFixtureIds.size,
+    fixtures: fixturesForDebug,
+    ignoredInProgressCandidates
+  };
+}
+
 function buildParticipantSummaries(groupTables, fixtures, liveFixtures) {
   const tableStats = new Map();
   const eliminatedTeamIds = getEliminatedTeamIds(fixtures);
   const liveTeamIds = getLiveTeamIdsPlayingToday([
-    ...fixtures.filter((fixture) => fixture.status === 'live'),
+    ...fixtures.filter(fixtureIsLiveSectionEligible),
     ...liveFixtures
   ]);
 
@@ -414,6 +484,15 @@ async function getFixturesData() {
     providerStatus: getProviderStatus(),
     fixtures: groupFixturesByDate(fixtures)
   };
+}
+
+async function getLiveFixturesDebugData() {
+  const [fixtures, liveFixtures] = await Promise.all([
+    getWorldCupFixtures(),
+    getLiveWorldCupFixtures()
+  ]);
+
+  return buildLiveFixturesDebug(fixtures, liveFixtures);
 }
 
 async function getBracketData() {
@@ -569,6 +648,7 @@ module.exports = {
   getThirdPlaceWatchData,
   getThirdPlaceWatchDebugData,
   getQualificationDebugData,
+  getLiveFixturesDebugData,
   getTableSourceDebug,
   refreshData,
   getProviderStatus,

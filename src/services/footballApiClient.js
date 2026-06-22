@@ -9,7 +9,7 @@ const API_BASE_URL = 'https://v3.football.api-sports.io';
 const LEAGUE_ID = '1';
 const SEASON = '2026';
 const CACHE_TTL_MS = 60 * 1000;
-const LIVE_STATUS_QUERY = '1H-HT-2H-ET-P-BT-LIVE';
+const LIVE_STATUS_QUERY = '1H-HT-2H-ET-P-BT-LIVE-SUSP-INT';
 
 const CACHE_KEYS = {
   fixtures: 'api-football:world-cup-2026:fixtures',
@@ -28,6 +28,8 @@ const STATUS_MAP = {
   BT: 'live',
   P: 'live',
   LIVE: 'live',
+  SUSP: 'live',
+  INT: 'live',
   FT: 'finished',
   AET: 'finished',
   PEN: 'finished',
@@ -37,6 +39,38 @@ const STATUS_MAP = {
   AWD: 'unavailable',
   WO: 'unavailable'
 };
+const STATUS_DETAIL_LABELS = {
+  NS: 'Scheduled',
+  TBD: 'Scheduled',
+  '1H': 'Live',
+  HT: 'Half-time',
+  '2H': 'Live',
+  ET: 'Live',
+  BT: 'Break',
+  P: 'Penalties',
+  LIVE: 'Live',
+  SUSP: 'Suspended',
+  INT: 'Interrupted',
+  FT: 'Finished',
+  AET: 'Finished',
+  PEN: 'Finished',
+  PST: 'Postponed',
+  CANC: 'Cancelled',
+  ABD: 'Abandoned',
+  AWD: 'Awarded',
+  WO: 'Walkover'
+};
+const LIVE_SECTION_RAW_STATUSES = new Set([
+  '1H',
+  'HT',
+  '2H',
+  'ET',
+  'BT',
+  'P',
+  'LIVE',
+  'SUSP',
+  'INT'
+]);
 const DISPLAY_GROUPS = new Set('ABCDEFGHIJKL'.split(''));
 const NORMALISED_KNOCKOUT_ROUNDS = new Set([
   'Round of 32',
@@ -154,8 +188,143 @@ function getGroupLetter(value) {
 }
 
 function normaliseStatus(rawStatus) {
-  const rawCode = String(rawStatus?.short || rawStatus?.long || '').toUpperCase();
+  const rawCode = normaliseRawStatus(rawStatus);
   return STATUS_MAP[rawCode] || 'unknown';
+}
+
+function inferRawStatusFromLongStatus(value) {
+  const longStatus = String(value || '').trim().toLowerCase();
+
+  if (!longStatus) {
+    return null;
+  }
+
+  if (longStatus.includes('time to be defined')) {
+    return 'TBD';
+  }
+
+  if (longStatus.includes('not started')) {
+    return 'NS';
+  }
+
+  if (longStatus.includes('first half')) {
+    return '1H';
+  }
+
+  if (longStatus.includes('halftime') || longStatus.includes('half-time')) {
+    return 'HT';
+  }
+
+  if (longStatus.includes('second half')) {
+    return '2H';
+  }
+
+  if (longStatus.includes('extra time')) {
+    return 'ET';
+  }
+
+  if (longStatus.includes('break time')) {
+    return 'BT';
+  }
+
+  if (longStatus.includes('penalty in progress')) {
+    return 'P';
+  }
+
+  if (longStatus.includes('in progress')) {
+    return 'LIVE';
+  }
+
+  if (longStatus.includes('suspend')) {
+    return 'SUSP';
+  }
+
+  if (longStatus.includes('interrupt')) {
+    return 'INT';
+  }
+
+  if (longStatus.includes('finished after penalty')) {
+    return 'PEN';
+  }
+
+  if (longStatus.includes('finished after extra')) {
+    return 'AET';
+  }
+
+  if (longStatus.includes('finished')) {
+    return 'FT';
+  }
+
+  if (longStatus.includes('postpon')) {
+    return 'PST';
+  }
+
+  if (longStatus.includes('cancel')) {
+    return 'CANC';
+  }
+
+  if (longStatus.includes('abandon')) {
+    return 'ABD';
+  }
+
+  if (longStatus.includes('technical loss')) {
+    return 'AWD';
+  }
+
+  if (longStatus.includes('walkover') || longStatus.includes('walk over')) {
+    return 'WO';
+  }
+
+  return null;
+}
+
+function normaliseRawStatus(rawStatus) {
+  const rawCode = String(rawStatus?.short || '').trim().toUpperCase();
+
+  if (rawCode) {
+    return rawCode;
+  }
+
+  const inferredCode = inferRawStatusFromLongStatus(rawStatus?.long);
+
+  if (inferredCode) {
+    return inferredCode;
+  }
+
+  return rawStatus?.long ? String(rawStatus.long).trim().toUpperCase() : null;
+}
+
+function stripMatchPrefix(value) {
+  return String(value || '').replace(/^match\s+/i, '').trim();
+}
+
+function hasSpecificSuspensionDetail(value) {
+  return /\b(due to|weather|lightning|storm|rain|pitch|security|crowd|medical)\b/i.test(value);
+}
+
+function normaliseStatusDetail(rawCode, rawStatus, status) {
+  const providerLong = String(rawStatus?.long || '').trim();
+  const defaultDetail = STATUS_DETAIL_LABELS[rawCode] || (
+    status === 'scheduled' ? 'Scheduled' :
+      status === 'finished' ? 'Finished' :
+        status === 'live' ? 'Live' :
+          status === 'unavailable' ? 'Unavailable' :
+            'Unknown'
+  );
+
+  if ((rawCode === 'SUSP' || rawCode === 'INT') && providerLong) {
+    const detail = stripMatchPrefix(providerLong);
+
+    if (detail && hasSpecificSuspensionDetail(detail)) {
+      return detail;
+    }
+  }
+
+  return defaultDetail;
+}
+
+function isLiveSectionEligible(status, rawStatus) {
+  return status === 'live' || LIVE_SECTION_RAW_STATUSES.has(rawStatus);
 }
 
 function normaliseRound(round) {
@@ -256,8 +425,9 @@ function normaliseWinner(rawFixture, status, homeTeam, awayTeam, homeScore, away
 }
 
 function normaliseFixture(rawFixture) {
-  const rawStatus = rawFixture?.fixture?.status?.short || rawFixture?.fixture?.status?.long || null;
-  const status = normaliseStatus(rawFixture?.fixture?.status);
+  const rawProviderStatus = rawFixture?.fixture?.status || {};
+  const rawStatus = normaliseRawStatus(rawProviderStatus);
+  const status = normaliseStatus(rawProviderStatus);
   const homeTeam = normaliseTeamName(rawFixture?.teams?.home);
   const awayTeam = normaliseTeamName(rawFixture?.teams?.away);
   const localHomeTeam = findLocalTeam(homeTeam);
@@ -278,7 +448,8 @@ function normaliseFixture(rawFixture) {
     utcDate,
     localDate,
     status,
-    statusLabel: rawFixture?.fixture?.status?.long || rawStatus || status,
+    statusLabel: rawProviderStatus.long || rawStatus || status,
+    statusDetail: normaliseStatusDetail(rawStatus, rawProviderStatus, status),
     round,
     rawRound,
     group: explicitGroup || inferredGroup || null,
@@ -289,8 +460,9 @@ function normaliseFixture(rawFixture) {
     homeScore,
     awayScore,
     winner: normaliseWinner(rawFixture, status, homeTeam, awayTeam, homeScore, awayScore),
-    elapsed: Number.isFinite(rawFixture?.fixture?.status?.elapsed) ? rawFixture.fixture.status.elapsed : null,
-    rawStatus
+    elapsed: Number.isFinite(rawProviderStatus.elapsed) ? rawProviderStatus.elapsed : null,
+    rawStatus,
+    isLiveSectionEligible: isLiveSectionEligible(status, rawStatus)
   };
 }
 
@@ -483,15 +655,24 @@ async function getWorldCupRounds(options = {}) {
 
 async function getLiveWorldCupFixtures(options = {}) {
   return getResource('liveFixtures', async () => {
-    const payload = await fetchFromProvider('/fixtures', {
-      status: LIVE_STATUS_QUERY
-    });
+    let payload;
+
+    try {
+      payload = await fetchFromProvider('/fixtures', {
+        status: LIVE_STATUS_QUERY
+      });
+    } catch (error) {
+      console.warn('api-football live fixture status query failed; falling back to full fixtures');
+      payload = await fetchFromProvider('/fixtures');
+    }
 
     if (!payload || !Array.isArray(payload.response)) {
       return [];
     }
 
-    return payload.response.map(normaliseFixture).filter((fixture) => fixture.id);
+    return payload.response
+      .map(normaliseFixture)
+      .filter((fixture) => fixture.id && fixture.isLiveSectionEligible);
   }, options);
 }
 
@@ -525,5 +706,6 @@ module.exports = {
   refreshWorldCupData,
   normaliseFixture,
   normaliseStanding,
+  isLiveSectionEligible,
   getProviderStatus
 };

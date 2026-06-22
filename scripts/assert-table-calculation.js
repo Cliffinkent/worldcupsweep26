@@ -4,6 +4,47 @@ const { calculateGroupTablesWithDiagnostics } = require('../src/services/tableCa
 const { buildParticipantSummaries } = require('../src/services/sweepstakeService');
 const { normaliseFixture } = require('../src/services/footballApiClient');
 
+function rawFixture({
+  id,
+  short,
+  long,
+  elapsed = null,
+  home = 'France',
+  away = 'Iraq',
+  homeScore = null,
+  awayScore = null
+}) {
+  return {
+    fixture: {
+      id,
+      date: '2026-06-23T18:00:00+00:00',
+      status: {
+        short,
+        long,
+        elapsed
+      },
+      venue: {}
+    },
+    league: {
+      round: 'Group I - 1'
+    },
+    teams: {
+      home: {
+        name: home,
+        winner: null
+      },
+      away: {
+        name: away,
+        winner: null
+      }
+    },
+    goals: {
+      home: homeScore,
+      away: awayScore
+    }
+  };
+}
+
 const rawMexicoSouthAfricaFixture = {
   fixture: {
     id: 1,
@@ -124,5 +165,86 @@ assert.equal(marion.teams.find((team) => team.id === 'mexico').points, 3);
 assert.equal(dawn.teams.find((team) => team.id === 'south-africa').points, 0);
 assert.equal(marion.totalGroupPoints, 3);
 assert.equal(dawn.totalGroupPoints, 0);
+
+const suspendedFixture = normaliseFixture(rawFixture({
+  id: 101,
+  short: 'SUSP',
+  long: 'Match Suspended',
+  elapsed: 28,
+  homeScore: 1,
+  awayScore: 0
+}));
+const interruptedFixture = normaliseFixture(rawFixture({
+  id: 102,
+  short: 'INT',
+  long: 'Match Interrupted',
+  elapsed: 62,
+  homeScore: 1,
+  awayScore: 1
+}));
+const postponedFixture = normaliseFixture(rawFixture({
+  id: 103,
+  short: 'PST',
+  long: 'Match Postponed'
+}));
+
+assert.deepEqual({
+  rawStatus: suspendedFixture.rawStatus,
+  status: suspendedFixture.status,
+  statusDetail: suspendedFixture.statusDetail,
+  homeScore: suspendedFixture.homeScore,
+  awayScore: suspendedFixture.awayScore,
+  isLiveSectionEligible: suspendedFixture.isLiveSectionEligible
+}, {
+  rawStatus: 'SUSP',
+  status: 'live',
+  statusDetail: 'Suspended',
+  homeScore: 1,
+  awayScore: 0,
+  isLiveSectionEligible: true
+});
+
+assert.deepEqual({
+  rawStatus: interruptedFixture.rawStatus,
+  status: interruptedFixture.status,
+  statusDetail: interruptedFixture.statusDetail,
+  homeScore: interruptedFixture.homeScore,
+  awayScore: interruptedFixture.awayScore,
+  isLiveSectionEligible: interruptedFixture.isLiveSectionEligible
+}, {
+  rawStatus: 'INT',
+  status: 'live',
+  statusDetail: 'Interrupted',
+  homeScore: 1,
+  awayScore: 1,
+  isLiveSectionEligible: true
+});
+
+assert.deepEqual({
+  rawStatus: postponedFixture.rawStatus,
+  status: postponedFixture.status,
+  statusDetail: postponedFixture.statusDetail,
+  homeScore: postponedFixture.homeScore,
+  awayScore: postponedFixture.awayScore,
+  isLiveSectionEligible: postponedFixture.isLiveSectionEligible
+}, {
+  rawStatus: 'PST',
+  status: 'unavailable',
+  statusDetail: 'Postponed',
+  homeScore: null,
+  awayScore: null,
+  isLiveSectionEligible: false
+});
+
+const statusRegression = calculateGroupTablesWithDiagnostics(sweepstakeTeams, [
+  suspendedFixture,
+  interruptedFixture,
+  postponedFixture
+]);
+
+assert.equal(statusRegression.diagnostics.finishedGroupFixturesCount, 0);
+assert.equal(statusRegression.diagnostics.countedFixtures.some((fixture) => fixture.id === '101'), false);
+assert.equal(statusRegression.diagnostics.countedFixtures.some((fixture) => fixture.id === '102'), false);
+assert.equal(statusRegression.diagnostics.countedFixtures.some((fixture) => fixture.id === '103'), false);
 
 console.log('table calculation assertions passed');

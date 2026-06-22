@@ -48,7 +48,7 @@ const endpoints = [
   {
     label: 'live fixtures',
     path: '/fixtures',
-    params: { league: '1', season: '2026', status: '1H-HT-2H-ET-P-BT-LIVE' },
+    params: { league: '1', season: '2026', status: '1H-HT-2H-ET-P-BT-LIVE-SUSP-INT' },
     sampleFile: 'live-fixtures.sample.json'
   }
 ];
