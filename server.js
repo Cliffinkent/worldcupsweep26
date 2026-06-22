@@ -23,10 +23,10 @@ app.use(helmet({
     useDefaults: false,
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", 'https://va.vercel-scripts.com'],
       styleSrc: ["'self'"],
       imgSrc: ["'self'", 'data:'],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", 'https://va.vercel-scripts.com'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       fontSrc: ["'self'"]
