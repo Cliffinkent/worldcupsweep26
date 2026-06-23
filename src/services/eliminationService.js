@@ -787,7 +787,6 @@ function toDepartureBoardRow(record, index) {
     reason: record.reason,
     eliminatedBy: record.eliminatedBy,
     eliminationStatus: record.status,
-    status: record.status,
     flightStatus: 'Boarding',
     source: record.source,
     sourceLabel: record.sourceLabel,

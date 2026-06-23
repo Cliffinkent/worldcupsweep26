@@ -5,6 +5,14 @@ const {
   buildEliminationData,
   buildEliminationsDebug
 } = require('../src/services/eliminationService');
+const {
+  buildDepartureLoungePrompt,
+  buildDepartureSceneHash
+} = require('../src/services/departureScenePromptService');
+const {
+  ensureDepartureSceneGenerated,
+  renderDepartureBoardImage
+} = require('../src/services/departureSceneService');
 
 const THIRD_PLACE_STATS = {
   A: { points: 8, goalDifference: 3, goalsFor: 5 },
@@ -228,4 +236,136 @@ assert.equal(debug.passed, true, debug.errors.join('\n'));
 assert.equal(debug.checks.noWorldCupWinnerEliminated, true);
 assert.equal(debug.checks.noDuplicateEliminatedTeams, true);
 
-console.log('elimination assertions passed');
+const promptTeams = [
+  {
+    country: 'Zedland',
+    owner: 'Zara',
+    group: 'Z',
+    kitPrimary: '#112233',
+    kitSecondary: '#ffffff',
+    kitAccent: '#cc0000',
+    reason: 'Test elimination'
+  },
+  {
+    country: 'Atlantis',
+    owner: 'Ada',
+    group: 'A',
+    kitPrimary: '#00aaff',
+    kitSecondary: '#001144',
+    kitAccent: '#facc15',
+    reason: 'Test elimination'
+  }
+];
+const promptBoard = [
+  {
+    country: 'Atlantis',
+    owner: 'Ada',
+    flightCode: 'ATL 2026',
+    gate: 'Gate A1',
+    status: 'Boarding',
+    reason: 'Test elimination'
+  }
+];
+const prompt = buildDepartureLoungePrompt({ loungeTeams: promptTeams, styleVersion: '1' });
+
+assert.equal(buildDepartureLoungePrompt({ loungeTeams: [], styleVersion: '1' }), null);
+assert.match(prompt, /Atlantis/);
+assert.match(prompt, /Zedland/);
+assert.match(prompt, /#00AAFF/);
+assert.match(prompt, /90's style retro/i);
+assert.match(prompt, /sad/i);
+assert.match(prompt, /real player likenesses/i);
+assert.doesNotMatch(prompt, /Ada/);
+assert.doesNotMatch(prompt, /Zara/);
+
+const hashA = buildDepartureSceneHash({ loungeTeams: promptTeams, styleVersion: '1' });
+const hashB = buildDepartureSceneHash({ loungeTeams: promptTeams.slice().reverse(), styleVersion: '1' });
+const hashC = buildDepartureSceneHash({
+  loungeTeams: promptTeams.concat({
+    country: 'Borealia',
+    owner: 'Bea',
+    kitPrimary: '#111111',
+    kitSecondary: '#eeeeee',
+    kitAccent: '#22cc88'
+  }),
+  styleVersion: '1'
+});
+
+assert.equal(hashA, hashB);
+assert.notEqual(hashA, hashC);
+
+const boardSvg = renderDepartureBoardImage({ departureBoard: promptBoard });
+assert.match(boardSvg, /Atlantis/);
+assert.match(boardSvg, /ATL 2026/);
+assert.match(boardSvg, /Test elimination/);
+assert.doesNotMatch(boardSvg, /<script/i);
+
+async function assertDepartureSceneStates() {
+  const originalEnabled = process.env.IMAGE_GENERATION_ENABLED;
+  const originalOpenAiKey = process.env.OPENAI_API_KEY;
+  const originalStyleVersion = process.env.DEPARTURE_SCENE_STYLE_VERSION;
+
+  try {
+    process.env.DEPARTURE_SCENE_STYLE_VERSION = '1';
+    process.env.IMAGE_GENERATION_ENABLED = 'false';
+    delete process.env.OPENAI_API_KEY;
+
+    const emptyState = await ensureDepartureSceneGenerated({
+      eliminatedData: {
+        loungeTeams: [],
+        departureBoard: []
+      },
+      force: true
+    });
+    assert.equal(emptyState.status, 'empty');
+
+    const disabledState = await ensureDepartureSceneGenerated({
+      eliminatedData: {
+        loungeTeams: promptTeams,
+        departureBoard: promptBoard
+      },
+      force: true
+    });
+    assert.equal(disabledState.status, 'disabled');
+    assert.equal(disabledState.loungeImageUrl, null);
+
+    process.env.IMAGE_GENERATION_ENABLED = 'true';
+    delete process.env.OPENAI_API_KEY;
+
+    const missingKeyState = await ensureDepartureSceneGenerated({
+      eliminatedData: {
+        loungeTeams: promptTeams,
+        departureBoard: promptBoard
+      },
+      force: true
+    });
+    assert.equal(missingKeyState.status, 'missing_api_key');
+  } finally {
+    if (originalEnabled === undefined) {
+      delete process.env.IMAGE_GENERATION_ENABLED;
+    } else {
+      process.env.IMAGE_GENERATION_ENABLED = originalEnabled;
+    }
+
+    if (originalOpenAiKey === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = originalOpenAiKey;
+    }
+
+    if (originalStyleVersion === undefined) {
+      delete process.env.DEPARTURE_SCENE_STYLE_VERSION;
+    } else {
+      process.env.DEPARTURE_SCENE_STYLE_VERSION = originalStyleVersion;
+    }
+  }
+}
+
+assertDepartureSceneStates()
+  .then(() => {
+    console.log('elimination assertions passed');
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('node:crypto');
 const rateLimit = require('express-rate-limit');
 const {
   getSweepstakeData,
@@ -16,6 +17,10 @@ const {
   refreshData,
   getProviderStatus
 } = require('../services/sweepstakeService');
+const {
+  getDepartureSceneState,
+  ensureDepartureSceneGenerated
+} = require('../services/departureSceneService');
 
 const router = express.Router();
 const refreshLimiter = rateLimit({
@@ -27,9 +32,26 @@ const refreshLimiter = rateLimit({
     error: 'Refresh rate limit exceeded'
   }
 });
+const departureSceneRegenerateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Departure scene regeneration rate limit exceeded'
+  }
+});
 
 function sanitiseString(value) {
   return String(value).replace(/[^\w\s:.,/@-]/g, '').trim();
+}
+
+function timingSafeTokenMatches(provided, expected) {
+  const providedBuffer = Buffer.from(String(provided || ''));
+  const expectedBuffer = Buffer.from(String(expected || ''));
+
+  return providedBuffer.length === expectedBuffer.length &&
+    crypto.timingSafeEqual(providedBuffer, expectedBuffer);
 }
 
 function validateRequest(req, res, next) {
@@ -99,7 +121,13 @@ router.get('/third-place-watch', asyncHandler(async (req, res) => {
 }));
 
 router.get('/eliminated-teams', asyncHandler(async (req, res) => {
-  res.json(await getEliminatedTeamsData());
+  const eliminatedData = await getEliminatedTeamsData();
+  const generatedScene = await getDepartureSceneState(eliminatedData);
+
+  res.json({
+    ...eliminatedData,
+    generatedScene
+  });
 }));
 
 router.get('/debug/table-source', asyncHandler(async (req, res) => {
@@ -133,6 +161,24 @@ router.post('/refresh', refreshLimiter, asyncHandler(async (req, res) => {
   }
 
   res.json(await refreshData());
+}));
+
+router.post('/admin/departure-scene/regenerate', departureSceneRegenerateLimiter, asyncHandler(async (req, res) => {
+  const adminToken = String(process.env.ADMIN_RENDER_TOKEN || '').trim();
+
+  if (!adminToken) {
+    res.status(403).json({ error: 'Admin render token is not configured' });
+    return;
+  }
+
+  if (!timingSafeTokenMatches(req.get('x-admin-render-token'), adminToken)) {
+    res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+
+  const generatedScene = await ensureDepartureSceneGenerated({ force: true });
+
+  res.json({ generatedScene });
 }));
 
 module.exports = router;

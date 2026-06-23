@@ -1,6 +1,7 @@
 .env
 node_modules/
 diagnostics/api-football/*.sample.json
+src/public/generated/
 .DS_Store
 
 # Design source bundles (the needed assets are copied into src/public/)
