@@ -7,6 +7,9 @@ const {
   getBracketData,
   getThirdPlaceWatchData,
   getThirdPlaceWatchDebugData,
+  getEliminatedTeamsData,
+  getEliminationsDebugData,
+  getMathematicalEliminationsDebugData,
   getQualificationDebugData,
   getLiveFixturesDebugData,
   getTableSourceDebug,
@@ -95,6 +98,10 @@ router.get('/third-place-watch', asyncHandler(async (req, res) => {
   res.json(await getThirdPlaceWatchData());
 }));
 
+router.get('/eliminated-teams', asyncHandler(async (req, res) => {
+  res.json(await getEliminatedTeamsData());
+}));
+
 router.get('/debug/table-source', asyncHandler(async (req, res) => {
   res.json(await getTableSourceDebug());
 }));
@@ -109,6 +116,14 @@ router.get('/debug/live-fixtures', asyncHandler(async (req, res) => {
 
 router.get('/debug/third-place-watch', asyncHandler(async (req, res) => {
   res.json(await getThirdPlaceWatchDebugData());
+}));
+
+router.get('/debug/eliminations', asyncHandler(async (req, res) => {
+  res.json(await getEliminationsDebugData());
+}));
+
+router.get('/debug/mathematical-eliminations', asyncHandler(async (req, res) => {
+  res.json(await getMathematicalEliminationsDebugData());
 }));
 
 router.post('/refresh', refreshLimiter, asyncHandler(async (req, res) => {

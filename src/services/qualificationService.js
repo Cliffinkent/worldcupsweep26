@@ -1,4 +1,5 @@
 const sweepstakeTeams = require('../data/sweepstakeTeams');
+const { rankThirdPlacedRows } = require('./fifaTieBreakerService');
 
 const GROUPS = 'ABCDEFGHIJKL'.split('');
 const THIRD_PLACE_PROJECTION_WARNING = 'Some third-place projections use a display fallback because fair play/drawing-of-lots data is unavailable.';
@@ -89,7 +90,7 @@ function toProjectedTeam(row, group, groupPosition, groupMatchCount, projectionS
     teamConductScore: fairPlayScore,
     fifaRanking,
     provisional: groupMatchCount === 0,
-    unresolvedTie: false,
+    unresolvedTie: Boolean(row.unresolvedTie),
     projectionType: projectionStatus === 'confirmed' ? 'confirmed' : 'as_it_stands'
   };
 }
@@ -213,23 +214,15 @@ function compareThirdPlacedTeams(a, b) {
 }
 
 function rankThirdPlacedTeams(thirdPlacedTeams) {
-  const { unresolvedTeamIds, unresolvedTies } = findUnresolvedThirdPlaceTies(thirdPlacedTeams);
-  const ranked = thirdPlacedTeams
-    .map((team) => ({
-      ...team,
-      unresolvedTie: unresolvedTeamIds.has(team.id || `${team.group}:${team.country}`)
-    }))
-    .sort(compareThirdPlacedTeams)
-    .map((team, index) => ({
-      ...team,
-      rank: index + 1,
-      projectedToQualify: index < 8
-    }));
+  const thirdPlaceRanking = rankThirdPlacedRows(thirdPlacedTeams);
+  const unresolvedTies = thirdPlaceRanking.unresolvedTies.length
+    ? findUnresolvedThirdPlaceTies(thirdPlacedTeams).unresolvedTies
+    : [];
 
   return {
-    ranked,
+    ranked: thirdPlaceRanking.rows,
     unresolvedTies,
-    warnings: unresolvedTies.length ? [THIRD_PLACE_PROJECTION_WARNING] : []
+    warnings: thirdPlaceRanking.unresolvedTies.length ? [THIRD_PLACE_PROJECTION_WARNING] : []
   };
 }
 

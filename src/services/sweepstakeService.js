@@ -21,6 +21,11 @@ const {
   buildThirdPlaceWatch,
   buildThirdPlaceWatchDebug
 } = require('./thirdPlaceWatchService');
+const {
+  buildEliminationData,
+  buildEliminationsDebug
+} = require('./eliminationService');
+const { calculateMathematicalEliminations } = require('./mathematicalEliminationService');
 
 const KNOCKOUT_ROUNDS = new Set([
   'Round of 32',
@@ -566,6 +571,81 @@ async function getThirdPlaceWatchDebugData() {
   });
 }
 
+async function getEliminationContext() {
+  const [rawFixtures, standings, rounds] = await Promise.all([
+    getWorldCupFixtures(),
+    getWorldCupStandings(),
+    getWorldCupRounds()
+  ]);
+  const fixtures = attachBroadcasts(rawFixtures);
+  const { groupTables } = resolveGroupTables(fixtures, standings);
+  const generatedAt = new Date().toISOString();
+  const providerStatus = getProviderStatus();
+  const bracketProjection = buildBracketProjection({
+    groupTables,
+    fixtures,
+    rounds,
+    providerStatus,
+    generatedAt
+  });
+
+  return {
+    groupTables,
+    fixtures,
+    bracketProjection,
+    providerStatus,
+    generatedAt
+  };
+}
+
+async function getEliminatedTeamsData() {
+  return buildEliminationData(await getEliminationContext());
+}
+
+async function getEliminationsDebugData() {
+  return buildEliminationsDebug(await getEliminationContext());
+}
+
+async function getMathematicalEliminationsDebugData() {
+  const context = await getEliminationContext();
+  const mathematical = calculateMathematicalEliminations({
+    groups: context.groupTables,
+    fixtures: context.fixtures,
+    teams: sweepstakeTeams
+  });
+  const eliminationData = buildEliminationData(context);
+  const activeOrAtRiskCountries = new Set([
+    ...eliminationData.activeTeams,
+    ...(eliminationData.atRiskTeams || [])
+  ].map((team) => team.country));
+  const eliminatedTeamsRemovedFromActiveTeams = mathematical.eliminatedTeams.every((team) => (
+    !activeOrAtRiskCountries.has(team.country)
+  ));
+  const checks = {
+    ...mathematical.checks,
+    eliminatedTeamsRemovedFromActiveTeams
+  };
+  const errors = [...(mathematical.errors || [])];
+
+  if (!eliminatedTeamsRemovedFromActiveTeams) {
+    errors.push('One or more mathematically eliminated teams still appears in activeTeams or atRiskTeams.');
+  }
+
+  Object.entries(checks).forEach(([name, passed]) => {
+    if (!passed && name !== 'eliminatedTeamsRemovedFromActiveTeams') {
+      errors.push(`Mathematical eliminations check failed: ${name}.`);
+    }
+  });
+
+  return {
+    ...mathematical,
+    generatedAt: context.generatedAt,
+    passed: errors.length === 0 && Object.values(checks).every(Boolean),
+    errors,
+    checks
+  };
+}
+
 async function getQualificationDebugData() {
   const [rawFixtures, standings, rounds] = await Promise.all([
     getWorldCupFixtures(),
@@ -647,6 +727,9 @@ module.exports = {
   getBracketData,
   getThirdPlaceWatchData,
   getThirdPlaceWatchDebugData,
+  getEliminatedTeamsData,
+  getEliminationsDebugData,
+  getMathematicalEliminationsDebugData,
   getQualificationDebugData,
   getLiveFixturesDebugData,
   getTableSourceDebug,

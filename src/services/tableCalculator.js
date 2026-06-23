@@ -16,6 +16,8 @@ function createEmptyRow(team) {
   };
 }
 
+const { rankGroupRows } = require('./fifaTieBreakerService');
+
 const DISPLAY_GROUPS = new Set('ABCDEFGHIJKL'.split(''));
 const KNOCKOUT_ROUNDS = new Set([
   'Round of 32',
@@ -86,15 +88,6 @@ function applyResult(tableRows, homeTeam, awayTeam, homeScore, awayScore) {
   awayRow.drawn += 1;
   homeRow.points += 1;
   awayRow.points += 1;
-}
-
-function compareRows(a, b) {
-  return (
-    b.points - a.points ||
-    b.goalDifference - a.goalDifference ||
-    b.goalsFor - a.goalsFor ||
-    a.country.localeCompare(b.country)
-  );
 }
 
 function isDisplayGroup(group) {
@@ -190,7 +183,9 @@ function calculateGroupTablesWithDiagnostics(teams, fixtures) {
       countedFixtures.push(createFixtureDiagnostic(fixture, {
         group: fixtureGroup,
         homeTeam: fixture.homeTeam || null,
+        homeTeamId: homeTeam.id,
         awayTeam: fixture.awayTeam || null,
+        awayTeamId: awayTeam.id,
         homeScore: fixture.homeScore,
         awayScore: fixture.awayScore,
         status: fixture.status
@@ -199,10 +194,17 @@ function calculateGroupTablesWithDiagnostics(teams, fixtures) {
 
   const groupTables = Array.from(tables.entries())
     .sort(([groupA], [groupB]) => groupA.localeCompare(groupB))
-    .map(([group, rows]) => ({
-      group,
-      table: Array.from(rows.values()).sort(compareRows)
-    }));
+    .map(([group, rows]) => {
+      const groupFixtures = countedFixtures.filter((fixture) => fixture.group === group);
+      const ranking = rankGroupRows(Array.from(rows.values()), groupFixtures);
+
+      return {
+        group,
+        table: ranking.rows,
+        rankingWarnings: ranking.warnings,
+        unresolvedTies: ranking.unresolvedTies
+      };
+    });
 
   return {
     groupTables,
