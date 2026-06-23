@@ -166,6 +166,14 @@ function debugWarnings({ generatedScene, loungeTeamCount }) {
   return warnings;
 }
 
+function storageDiagnosticsFromStatus(storageStatus) {
+  return {
+    canCheckHealthPrefix: storageStatus?.storageStatus === 'ready' || storageStatus?.storageStatus === 'health_asset_missing',
+    lastKnownHealthUploadStatus: storageStatus?.storageStatus || 'unknown',
+    lastKnownHealthErrorCategory: storageStatus?.storageStatus === 'ready' ? null : (storageStatus?.storageStatus || 'unknown')
+  };
+}
+
 router.use(validateRequest);
 
 router.get('/health', (req, res) => {
@@ -210,6 +218,7 @@ router.get('/eliminated-teams', asyncHandler(async (req, res) => {
 router.get('/debug/departure-scene', asyncHandler(async (req, res) => {
   const eliminatedData = await getEliminatedTeamsData();
   const generatedScene = await getDepartureSceneState({ eliminatedData });
+  const storageStatus = await getBlobStorageStatus();
   const existingAssets = generatedScene.sceneHash
     ? await getExistingSceneAssets({ sceneHash: generatedScene.sceneHash })
     : null;
@@ -231,6 +240,7 @@ router.get('/debug/departure-scene', asyncHandler(async (req, res) => {
       board: serialiseDebugAsset(existingAssets?.board),
       manifest: serialiseDebugAsset(existingAssets?.manifest)
     },
+    storageDiagnostics: storageDiagnosticsFromStatus(storageStatus),
     status: generatedScene.status,
     storageStatus: generatedScene.storageStatus,
     warnings: debugWarnings({ generatedScene, loungeTeamCount })

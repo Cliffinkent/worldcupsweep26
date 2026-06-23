@@ -1,68 +1,116 @@
+#!/usr/bin/env node
+
 const path = require('node:path');
 const dotenv = require('dotenv');
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
-const { put } = require('@vercel/blob');
-const OpenAI = require('openai');
-const { getEliminatedTeamsData } = require('../src/services/sweepstakeService');
-const {
-  buildDepartureLoungePrompt,
-  buildDepartureSceneHash,
-  getSafePromptPreview
-} = require('../src/services/departureScenePromptService');
-const { renderDepartureBoardSvg } = require('../src/services/departureBoardRenderService');
+const { head, list, put } = require('@vercel/blob');
+const { uploadWithRetry } = require('../src/services/blobStorageService');
 
-const BOARD_HEALTH_PATH = 'departure-scenes/_health/departure-board.svg';
-const LOUNGE_HEALTH_PATH = 'departure-scenes/_health/lounge.png';
-const DEFAULT_BLOB_TIMEOUT_MS = 10000;
+const HEALTH_PREFIX = 'departure-scenes/_health/';
+const TEXT_HEALTH_PATH = `${HEALTH_PREFIX}departure-scene-text.txt`;
+const FIXED_SVG_HEALTH_PATH = `${HEALTH_PREFIX}departure-scene-fixed.svg`;
+const BOARD_HEALTH_PATH = `${HEALTH_PREFIX}departure-board.svg`;
+const LOUNGE_HEALTH_PATH = `${HEALTH_PREFIX}lounge.png`;
+const FIXED_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="80"><text x="10" y="40">Blob SVG health</text></svg>';
 
 function cleanEnv(name) {
   return String(process.env[name] || '').trim();
 }
 
-function hasEnv(name) {
-  return Boolean(cleanEnv(name));
-}
+function tokenDiagnostics(token) {
+  const trimmedToken = token.trim();
 
-function blobTimeoutMs() {
-  const value = Number.parseInt(process.env.BLOB_REQUEST_TIMEOUT_MS || '', 10);
-  return Number.isFinite(value) && value > 0 ? value : DEFAULT_BLOB_TIMEOUT_MS;
-}
-
-async function withBlobTimeout(operation) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), blobTimeoutMs());
-
-  try {
-    return await operation(controller.signal);
-  } finally {
-    clearTimeout(timeout);
-  }
+  return {
+    hasToken: trimmedToken.length > 0,
+    tokenLength: trimmedToken.length,
+    first4Chars: trimmedToken.slice(0, 4),
+    last4Chars: trimmedToken.slice(-4),
+    containsWhitespace: /\s/.test(token)
+  };
 }
 
 function printDiagnostics() {
+  const diagnostics = tokenDiagnostics(String(process.env.BLOB_READ_WRITE_TOKEN || ''));
+
   console.log('departure scene diagnostics');
-  console.log(`has OPENAI_API_KEY: ${hasEnv('OPENAI_API_KEY')}`);
-  console.log(`has BLOB_READ_WRITE_TOKEN: ${hasEnv('BLOB_READ_WRITE_TOKEN')}`);
+  console.log(`has BLOB_READ_WRITE_TOKEN: ${diagnostics.hasToken}`);
+  console.log(`token length: ${diagnostics.tokenLength}`);
+  console.log(`first 4 chars: ${diagnostics.first4Chars}`);
+  console.log(`last 4 chars: ${diagnostics.last4Chars}`);
+  console.log(`contains whitespace: ${diagnostics.containsWhitespace}`);
   console.log(`IMAGE_GENERATION_ENABLED: ${cleanEnv('IMAGE_GENERATION_ENABLED') || 'false'}`);
+  console.log(`CHECK_DEPARTURE_SCENE_GENERATE: ${cleanEnv('CHECK_DEPARTURE_SCENE_GENERATE') || 'false'}`);
   console.log(`style version: ${cleanEnv('DEPARTURE_SCENE_STYLE_VERSION') || '1'}`);
 }
 
-async function uploadBoardHealthAsset({ svg, token }) {
-  const blob = await withBlobTimeout((abortSignal) => put(BOARD_HEALTH_PATH, svg, {
-    token,
-    access: 'public',
-    contentType: 'image/svg+xml',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    abortSignal
-  }));
-
-  return Boolean(blob?.url);
+function safeErrorMessage(error) {
+  return error?.message || 'Departure scene check failed';
 }
 
-async function generateAndUploadHealthLounge({ prompt, token }) {
+function hasDisallowedControlCharacters(value) {
+  return /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value);
+}
+
+function validateSvg(svg) {
+  const failures = [];
+
+  if (typeof svg !== 'string') {
+    failures.push('SVG render did not return a string');
+    return failures;
+  }
+
+  if (!svg.length) {
+    failures.push('SVG render returned an empty string');
+  }
+
+  if (!svg.includes('<svg')) {
+    failures.push('SVG output does not include <svg');
+  }
+
+  if (!svg.includes('xmlns=')) {
+    failures.push('SVG output does not include xmlns');
+  }
+
+  if (svg.includes('undefined') || svg.includes('null')) {
+    failures.push('SVG output contains undefined/null text');
+  }
+
+  if (hasDisallowedControlCharacters(svg)) {
+    failures.push('SVG output contains disallowed control characters');
+  }
+
+  return failures;
+}
+
+async function uploadHealthAsset({ pathname, content, contentType, token }) {
+  console.log(`uploading ${pathname}`);
+  const body = String(contentType || '').toLowerCase().startsWith('image/svg+xml')
+    ? Buffer.from(content, 'utf8')
+    : content;
+  const uploaded = await uploadWithRetry({
+    pathname,
+    content: body,
+    options: {
+      token,
+      access: 'public',
+      contentType,
+      addRandomSuffix: false,
+      allowOverwrite: true
+    }
+  });
+
+  return {
+    uploaded: true,
+    urlPresent: Boolean(uploaded?.url),
+    pathname: uploaded?.pathname || pathname,
+    contentType: uploaded?.contentType || contentType
+  };
+}
+
+async function uploadLoungeHealthAsset({ prompt, token }) {
+  const OpenAI = require('openai');
   const openai = new OpenAI({ apiKey: cleanEnv('OPENAI_API_KEY') });
   const result = await openai.images.generate({
     model: 'gpt-image-2',
@@ -77,22 +125,49 @@ async function generateAndUploadHealthLounge({ prompt, token }) {
     throw new Error('OpenAI image response did not include image data');
   }
 
-  const blob = await withBlobTimeout((abortSignal) => put(LOUNGE_HEALTH_PATH, Buffer.from(b64Json, 'base64'), {
-    token,
-    access: 'public',
+  return uploadHealthAsset({
+    pathname: LOUNGE_HEALTH_PATH,
+    content: Buffer.from(b64Json, 'base64'),
     contentType: 'image/png',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    multipart: true,
-    onUploadProgress: () => {},
-    abortSignal
-  }));
-
-  return Boolean(blob?.url);
+    token
+  });
 }
 
 async function main() {
   printDiagnostics();
+
+  const blobToken = cleanEnv('BLOB_READ_WRITE_TOKEN');
+  const failures = [];
+
+  if (!blobToken) {
+    throw new Error('Blob is not configured: BLOB_READ_WRITE_TOKEN is missing');
+  }
+
+  const textUpload = await uploadHealthAsset({
+    pathname: TEXT_HEALTH_PATH,
+    content: `departure scene blob text health ${new Date().toISOString()}\n`,
+    contentType: 'text/plain',
+    token: blobToken
+  });
+  console.log(`text upload succeeded: ${textUpload.uploaded}`);
+  console.log(`text returned URL present: ${textUpload.urlPresent}`);
+
+  const fixedSvgUpload = await uploadHealthAsset({
+    pathname: FIXED_SVG_HEALTH_PATH,
+    content: FIXED_SVG,
+    contentType: 'image/svg+xml; charset=utf-8',
+    token: blobToken
+  });
+  console.log(`fixed SVG upload succeeded: ${fixedSvgUpload.uploaded}`);
+  console.log(`fixed SVG returned URL present: ${fixedSvgUpload.urlPresent}`);
+
+  const { getEliminatedTeamsData } = require('../src/services/sweepstakeService');
+  const {
+    buildDepartureLoungePrompt,
+    buildDepartureSceneHash,
+    getSafePromptPreview
+  } = require('../src/services/departureScenePromptService');
+  const { renderDepartureBoardSvg } = require('../src/services/departureBoardRenderService');
 
   const eliminatedData = await getEliminatedTeamsData();
   const loungeTeams = eliminatedData.loungeTeams || [];
@@ -101,7 +176,7 @@ async function main() {
   const prompt = buildDepartureLoungePrompt({ loungeTeams, styleVersion });
   const sceneHash = buildDepartureSceneHash({ loungeTeams, styleVersion });
   const boardSvg = renderDepartureBoardSvg({ departureBoard, generatedAt: new Date().toISOString() });
-  const failures = [];
+  const boardSvgBytes = Buffer.byteLength(boardSvg, 'utf8');
 
   if (loungeTeams.length && !prompt) {
     failures.push('prompt was not built for eliminated lounge teams');
@@ -115,9 +190,7 @@ async function main() {
     failures.push('sceneHash was not built for eliminated lounge teams');
   }
 
-  if (!boardSvg.includes('<svg') || !boardSvg.includes('Departure board')) {
-    failures.push('departure board SVG did not render');
-  }
+  failures.push(...validateSvg(boardSvg));
 
   console.log(`lounge team count: ${loungeTeams.length}`);
   console.log(`departure board count: ${departureBoard.length}`);
@@ -125,19 +198,33 @@ async function main() {
   console.log(`prompt length: ${prompt ? prompt.length : 0}`);
   console.log(`prompt preview present: ${Boolean(getSafePromptPreview(prompt))}`);
   console.log(`sceneHash present: ${Boolean(sceneHash)}`);
+  console.log(`board SVG type: ${typeof boardSvg}`);
   console.log(`board SVG length: ${boardSvg.length}`);
+  console.log(`board SVG byte length: ${boardSvgBytes}`);
+  console.log(`board SVG includes xmlns: ${boardSvg.includes('xmlns=')}`);
+  console.log(`board SVG has disallowed control characters: ${hasDisallowedControlCharacters(boardSvg)}`);
 
-  const blobToken = cleanEnv('BLOB_READ_WRITE_TOKEN');
+  if (!failures.length) {
+    const boardUpload = await uploadHealthAsset({
+      pathname: BOARD_HEALTH_PATH,
+      content: boardSvg,
+      contentType: 'image/svg+xml; charset=utf-8',
+      token: blobToken
+    });
+    console.log(`board SVG upload succeeded: ${boardUpload.uploaded}`);
+    console.log(`board SVG returned URL present: ${boardUpload.urlPresent}`);
 
-  if (blobToken) {
-    const boardUploaded = await uploadBoardHealthAsset({ svg: boardSvg, token: blobToken });
-    console.log(`board health upload succeeded: ${boardUploaded}`);
+    const boardMetadata = await head(BOARD_HEALTH_PATH, { token: blobToken });
+    console.log(`board SVG metadata read succeeded: ${Boolean(boardMetadata?.url && boardMetadata?.pathname === BOARD_HEALTH_PATH)}`);
+    console.log(`board SVG metadata content type: ${boardMetadata?.contentType || 'unknown'}`);
+    console.log(`board SVG metadata size: ${boardMetadata?.size || 0}`);
 
-    if (!boardUploaded) {
-      failures.push('board health upload failed');
-    }
-  } else {
-    console.log('board health upload skipped: Blob token missing');
+    const listed = await list({
+      token: blobToken,
+      prefix: HEALTH_PREFIX
+    });
+    console.log(`health prefix list succeeded: ${Array.isArray(listed.blobs)}`);
+    console.log(`health prefix asset count: ${Array.isArray(listed.blobs) ? listed.blobs.length : 0}`);
   }
 
   const shouldGenerate = process.env.IMAGE_GENERATION_ENABLED === 'true'
@@ -146,17 +233,12 @@ async function main() {
   if (shouldGenerate) {
     if (!prompt) {
       failures.push('OpenAI check requested but prompt is missing');
-    } else if (!hasEnv('OPENAI_API_KEY')) {
+    } else if (!cleanEnv('OPENAI_API_KEY')) {
       failures.push('OpenAI check requested but OPENAI_API_KEY is missing');
-    } else if (!blobToken) {
-      failures.push('OpenAI check requested but BLOB_READ_WRITE_TOKEN is missing');
     } else {
-      const loungeUploaded = await generateAndUploadHealthLounge({ prompt, token: blobToken });
-      console.log(`lounge health upload succeeded: ${loungeUploaded}`);
-
-      if (!loungeUploaded) {
-        failures.push('lounge health upload failed');
-      }
+      const loungeUpload = await uploadLoungeHealthAsset({ prompt, token: blobToken });
+      console.log(`lounge health upload succeeded: ${loungeUpload.uploaded}`);
+      console.log(`lounge health returned URL present: ${loungeUpload.urlPresent}`);
     }
   } else {
     console.log('OpenAI generation skipped: set IMAGE_GENERATION_ENABLED=true and CHECK_DEPARTURE_SCENE_GENERATE=true to opt in');
@@ -167,16 +249,38 @@ async function main() {
   }
 }
 
+process.on('unhandledRejection', (error) => {
+  console.error(`departure scene check failed: ${safeErrorMessage(error)}`);
+
+  if (process.env.DEBUG === 'true' && error?.stack) {
+    console.error(error.stack);
+  }
+
+  process.exitCode = 1;
+});
+
+process.on('uncaughtException', (error) => {
+  console.error(`departure scene check failed: ${safeErrorMessage(error)}`);
+
+  if (process.env.DEBUG === 'true' && error?.stack) {
+    console.error(error.stack);
+  }
+
+  process.exitCode = 1;
+});
+
 main()
   .then(() => {
-    console.log('departure scene check passed');
+    if (!process.exitCode) {
+      console.log('departure scene check passed');
+    }
   })
   .catch((error) => {
-    console.error(`departure scene check failed: ${error.message}`);
+    console.error(`departure scene check failed: ${safeErrorMessage(error)}`);
 
     if (process.env.DEBUG === 'true' && error.stack) {
       console.error(error.stack);
     }
 
-    process.exit(1);
+    process.exitCode = 1;
   });

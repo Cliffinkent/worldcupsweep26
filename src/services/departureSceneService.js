@@ -89,11 +89,23 @@ function sceneErrorMessage(status) {
       return 'Generated lounge images are disabled.';
     case 'openai_not_configured':
       return 'Image generation is not configured.';
+    case 'assets_missing':
+      return 'Generated scene assets are not ready.';
+    case 'board_ready_lounge_missing':
+      return 'Generated lounge image is not ready.';
     case 'failed':
       return 'Generated image unavailable, showing fallback.';
     default:
       return null;
   }
+}
+
+function missingAssetStatus(assets) {
+  if (assets?.board?.exists && !assets?.lounge?.exists) {
+    return 'board_ready_lounge_missing';
+  }
+
+  return 'assets_missing';
 }
 
 function buildSceneResponse({
@@ -184,8 +196,8 @@ async function generateAndStoreDepartureBoard({ departureBoard, sceneHash, force
   return putDepartureSceneAsset({
     sceneHash,
     filename: BOARD_FILENAME,
-    content: svg,
-    contentType: 'image/svg+xml',
+    content: Buffer.from(svg, 'utf8'),
+    contentType: 'image/svg+xml; charset=utf-8',
     forceOverwrite: force === true
   });
 }
@@ -360,7 +372,10 @@ async function resolveDepartureScene({
       sceneHash,
       styleVersion,
       prompt,
-      assets
+      assets,
+      errorMessage: assets.storageStatus === 'storage_error'
+        ? 'Departure scene storage upload failed'
+        : null
     });
   }
 
@@ -406,7 +421,7 @@ async function resolveDepartureScene({
 
   if (!allowOpenAi) {
     return buildSceneResponse({
-      status: sceneReady ? 'ready' : 'pending',
+      status: sceneReady ? 'ready' : missingAssetStatus(assets),
       storageStatus: 'ready',
       sceneHash,
       styleVersion,

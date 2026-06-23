@@ -8,7 +8,6 @@ const {
 const STORAGE_PROVIDER = 'vercel-blob';
 const HEALTH_ASSET_PATH = 'departure-scenes/_health/blob-health.txt';
 const DEPARTURE_SCENE_PREFIX = 'departure-scenes';
-const DEFAULT_BLOB_WRITE_TIMEOUT_MS = 15000;
 const ALLOWED_DEPARTURE_SCENE_FILENAMES = new Set([
   'lounge.png',
   'departure-board.svg',
@@ -19,31 +18,124 @@ function getBlobToken() {
   return String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
 }
 
-function getBlobWriteTimeoutMs() {
-  const value = Number.parseInt(process.env.BLOB_WRITE_TIMEOUT_MS || '', 10);
-  return Number.isFinite(value) && value > 0 ? value : DEFAULT_BLOB_WRITE_TIMEOUT_MS;
-}
-
-async function withBlobWriteTimeout(operation) {
-  let timeoutId;
-  const operationPromise = operation();
-  operationPromise.catch(() => {});
-
-  const timeoutPromise = new Promise((resolve, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error('Blob write timed out'));
-    }, getBlobWriteTimeoutMs());
-  });
-
-  try {
-    return await Promise.race([operationPromise, timeoutPromise]);
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
 function isBlobNotFoundError(error) {
   return error instanceof BlobNotFoundError || error?.name === 'BlobNotFoundError';
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function errorCategory(error) {
+  const message = String(error?.message || '').toLowerCase();
+  const name = String(error?.name || '').toLowerCase();
+
+  if (message.includes('aborted') || name.includes('abort')) {
+    return 'request_aborted';
+  }
+
+  if (message.includes('fetch failed') || message.includes('network')) {
+    return 'network_error';
+  }
+
+  if (message.includes('timeout') || message.includes('timed out')) {
+    return 'network_timeout';
+  }
+
+  if (message.includes('rate limit') || message.includes('429')) {
+    return 'rate_limited';
+  }
+
+  if (message.includes('token') || message.includes('authorization') || message.includes('auth')) {
+    return 'auth_error';
+  }
+
+  if (message.includes('bad request') || message.includes('invalid')) {
+    return 'invalid_request';
+  }
+
+  return error?.name || 'blob_error';
+}
+
+function isTransientBlobError(error) {
+  return new Set([
+    'request_aborted',
+    'network_error',
+    'network_timeout',
+    'rate_limited'
+  ]).has(errorCategory(error));
+}
+
+function contentLength(content) {
+  if (Buffer.isBuffer(content)) {
+    return content.length;
+  }
+
+  if (typeof content === 'string') {
+    return Buffer.byteLength(content, 'utf8');
+  }
+
+  if (content instanceof Uint8Array) {
+    return content.byteLength;
+  }
+
+  return null;
+}
+
+function normaliseUploadContent({ content, contentType }) {
+  if (typeof content === 'string' && String(contentType || '').toLowerCase().startsWith('image/svg+xml')) {
+    return Buffer.from(content, 'utf8');
+  }
+
+  return content;
+}
+
+function safeUploadDiagnostics({ pathname, content, contentType, attempt, error }) {
+  return {
+    pathname,
+    contentType,
+    contentLength: contentLength(content),
+    attempt,
+    errorCategory: error ? errorCategory(error) : undefined
+  };
+}
+
+function logUploadRetry(details) {
+  if (process.env.DEBUG === 'true' && details.error) {
+    console.warn('vercel blob upload retry', safeUploadDiagnostics(details), details.error.stack || details.error);
+    return;
+  }
+
+  console.warn('vercel blob upload retry', safeUploadDiagnostics(details));
+}
+
+async function uploadWithRetry({ pathname, content, options, retries = 2 }) {
+  const backoffs = [500, 1500];
+  const uploadContent = normaliseUploadContent({ content, contentType: options?.contentType });
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
+    try {
+      return await put(pathname, uploadContent, options);
+    } catch (error) {
+      lastError = error;
+
+      if (!isTransientBlobError(error) || attempt > retries) {
+        throw error;
+      }
+
+      logUploadRetry({
+        pathname,
+        content: uploadContent,
+        contentType: options?.contentType,
+        attempt,
+        error
+      });
+      await sleep(backoffs[attempt - 1] || backoffs.at(-1));
+    }
+  }
+
+  throw lastError;
 }
 
 function validateSceneHash(sceneHash) {
@@ -283,13 +375,18 @@ async function putDepartureSceneAsset({
   }
 
   try {
-    const blob = await withBlobWriteTimeout(() => put(pathname, content, {
-      token,
-      access: 'public',
-      addRandomSuffix: false,
-      allowOverwrite: shouldOverwrite,
-      contentType
-    }));
+    const uploadContent = normaliseUploadContent({ content, contentType });
+    const blob = await uploadWithRetry({
+      pathname,
+      content: uploadContent,
+      options: {
+        token,
+        access: 'public',
+        addRandomSuffix: false,
+        allowOverwrite: shouldOverwrite,
+        contentType
+      }
+    });
 
     return {
       storageProvider: STORAGE_PROVIDER,
@@ -318,5 +415,6 @@ module.exports = {
   putDepartureSceneAsset,
   getDepartureSceneAssetMetadata,
   departureSceneAssetExists,
-  listDepartureSceneAssets
+  listDepartureSceneAssets,
+  uploadWithRetry
 };
