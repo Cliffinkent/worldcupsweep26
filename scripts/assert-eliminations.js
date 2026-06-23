@@ -5,6 +5,11 @@ const {
   buildEliminationData,
   buildEliminationsDebug
 } = require('../src/services/eliminationService');
+const {
+  buildDepartureLoungePrompt,
+  buildDepartureSceneHash
+} = require('../src/services/departureScenePromptService');
+const { renderDepartureBoardSvg } = require('../src/services/departureBoardRenderService');
 
 const THIRD_PLACE_STATS = {
   A: { points: 8, goalDifference: 3, goalsFor: 5 },
@@ -99,6 +104,52 @@ const manualData = buildEliminationData({
 assert.equal(manualData.eliminationSummary.eliminatedCount, 1);
 assert.equal(countryRows(manualData).get('Haiti').source, 'manual_official');
 assert.equal(manualData.loungeTeams[0].kitPrimary, '#174EA6');
+
+const departurePrompt = buildDepartureLoungePrompt({
+  loungeTeams: manualData.loungeTeams,
+  styleVersion: '1'
+});
+const departureHash = buildDepartureSceneHash({
+  loungeTeams: manualData.loungeTeams,
+  styleVersion: '1'
+});
+const sameDepartureHash = buildDepartureSceneHash({
+  loungeTeams: manualData.loungeTeams.slice().reverse(),
+  styleVersion: '1'
+});
+const changedDepartureHash = buildDepartureSceneHash({
+  loungeTeams: [
+    ...manualData.loungeTeams,
+    {
+      country: 'Exampleland',
+      owner: 'Example Owner',
+      kitPrimary: '#111111',
+      kitSecondary: '#eeeeee',
+      kitAccent: '#cc0000'
+    }
+  ],
+  styleVersion: '1'
+});
+const boardSvg = renderDepartureBoardSvg({
+  departureBoard: [{
+    ...manualData.departureBoard[0],
+    owner: 'Owner <script>',
+    reason: 'A & B < C'
+  }],
+  generatedAt: '2026-06-21T20:00:00.000Z'
+});
+
+assert.ok(departurePrompt.includes('Haiti'));
+assert.ok(departurePrompt.includes('90\'s'));
+assert.ok(departurePrompt.includes('No real people'));
+assert.equal(departurePrompt.includes(manualData.loungeTeams[0].owner), false);
+assert.ok(departurePrompt.length <= 2500);
+assert.equal(departureHash, sameDepartureHash);
+assert.notEqual(departureHash, changedDepartureHash);
+assert.ok(boardSvg.includes('HAI 2026'));
+assert.ok(boardSvg.includes('Owner &lt;script&gt;'));
+assert.ok(boardSvg.includes('A &amp; B &lt; C'));
+assert.equal(boardSvg.includes('<script>'), false);
 
 const groupTables = 'ABCDEFGHIJKL'.split('').map(groupTable);
 const groupData = buildEliminationData({

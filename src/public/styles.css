@@ -1408,6 +1408,57 @@ button {
   align-items: stretch;
 }
 
+.generated-scene {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.generated-scene__status {
+  margin: 0;
+  color: var(--ink-80);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.generated-scene__lounge,
+.generated-scene__board {
+  min-width: 0;
+  overflow: hidden;
+  border: var(--border-width-bold) solid var(--ink);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-hard);
+}
+
+.generated-scene__lounge {
+  min-height: 520px;
+  aspect-ratio: 3 / 2;
+}
+
+.generated-scene__lounge img,
+.generated-scene__board img {
+  display: block;
+  width: 100%;
+}
+
+.generated-scene__lounge img {
+  height: 100%;
+  object-fit: cover;
+}
+
+.generated-scene__board {
+  background: var(--ink);
+}
+
+.generated-scene__board img {
+  height: auto;
+}
+
+.generated-scene__fallback {
+  min-width: 0;
+}
+
 .airport-scene {
   position: relative;
   min-height: 520px;
@@ -1836,6 +1887,16 @@ button {
     border-right: 0;
   }
   .departure-summary { grid-template-columns: 1fr; }
+  .generated-scene__lounge,
+  .generated-scene__board {
+    margin-inline: calc(var(--space-4) * -1);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+  .generated-scene__lounge {
+    min-height: 460px;
+  }
   .airport-scene {
     min-height: 460px;
     margin-inline: calc(var(--space-4) * -1);

@@ -226,6 +226,72 @@ function renderDepartureBoard(rows) {
   </section>`;
 }
 
+function generatedSceneStatusMessage(scene) {
+  switch (scene?.status) {
+    case 'ready':
+      return 'Generated departure lounge ready';
+    case 'generation_disabled':
+      return 'Generated lounge disabled';
+    case 'storage_not_configured':
+      return 'Image storage not configured';
+    case 'openai_not_configured':
+      return 'Image generation not configured';
+    case 'empty':
+      return 'No departures yet';
+    case 'failed':
+      return 'Generated image unavailable, showing fallback';
+    case 'pending':
+    case 'generating':
+      return 'Scene image pending';
+    default:
+      return scene ? 'Scene image pending' : '';
+  }
+}
+
+function renderGeneratedSceneStatus(scene) {
+  const message = generatedSceneStatusMessage(scene);
+
+  if (!message) {
+    return '';
+  }
+
+  return `<p class="generated-scene__status" data-status="${escapeHtml(scene.status || 'unknown')}">${escapeHtml(message)}</p>`;
+}
+
+function renderSceneLounge(scene, teams) {
+  if (scene?.loungeImageUrl) {
+    return `<section class="generated-scene__lounge" aria-label="Generated departure lounge image">
+      <img src="${escapeHtml(scene.loungeImageUrl)}" alt="Generated illustrated departure lounge for eliminated teams" loading="lazy">
+    </section>`;
+  }
+
+  return `<div class="generated-scene__fallback">${renderAirportScene(teams)}</div>`;
+}
+
+function renderSceneBoard(scene, rows) {
+  if (scene?.boardImageUrl) {
+    return `<section class="generated-scene__board" aria-label="Rendered departure board image">
+      <img src="${escapeHtml(scene.boardImageUrl)}" alt="Rendered departure board for eliminated teams" loading="lazy">
+    </section>`;
+  }
+
+  return `<div class="generated-scene__fallback">${renderDepartureBoard(rows)}</div>`;
+}
+
+function renderGeneratedScene(data) {
+  const scene = data.generatedScene || null;
+  const loungeTeams = data.loungeTeams || [];
+  const departureBoard = data.departureBoard || [];
+
+  return `<section class="generated-scene" aria-label="Generated departure scene">
+    ${renderGeneratedSceneStatus(scene)}
+    <div class="eliminated-layout">
+      ${renderSceneLounge(scene, loungeTeams)}
+      ${renderSceneBoard(scene, departureBoard)}
+    </div>
+  </section>`;
+}
+
 function renderPendingThirdPlace(rows) {
   if (!rows.length) {
     return '';
@@ -257,7 +323,7 @@ function render(data) {
   elements.root.innerHTML = [
     renderWarnings(data.warnings || []),
     renderSummary(data.eliminationSummary || {}, data.lastUpdated),
-    `<div class="eliminated-layout">${renderAirportScene(data.loungeTeams || [])}${renderDepartureBoard(data.departureBoard || [])}</div>`,
+    renderGeneratedScene(data),
     renderPendingThirdPlace(data.pendingThirdPlaceTeams || [])
   ].join('');
 }

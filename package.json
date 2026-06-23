@@ -7,7 +7,9 @@
     "audit:bracket": "node scripts/assert-bracket-projection.js",
     "audit:eliminations": "node scripts/audit-eliminations.js",
     "check:api-football": "node scripts/check-api-football.js",
-    "dev": "node --watch server.js",
+    "check:blob": "node scripts/check-vercel-blob.js",
+    "check:departure-scene": "node scripts/check-departure-scene.js",
+    "dev": "node --watch-path=server.js --watch-path=src server.js",
     "test": "node scripts/assert-table-calculation.js && node scripts/assert-bracket-projection.js && node scripts/assert-eliminations.js",
     "start": "node server.js"
   },
@@ -16,11 +18,13 @@
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
+    "@vercel/blob": "^2.4.1",
     "axios": "^1.7.9",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
-    "helmet": "^8.0.0"
+    "helmet": "^8.0.0",
+    "openai": "^6.44.0"
   }
 }
