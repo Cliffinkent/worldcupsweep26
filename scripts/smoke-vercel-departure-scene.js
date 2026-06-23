@@ -5,6 +5,9 @@ const dotenv = require('dotenv');
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
+const DEFAULT_VERCEL_PREVIEW_URL = 'https://worldcupsweep26-git-codex-vercel-blob-storage-ceekayapps.vercel.app/';
+const VERCEL_PROTECTION_BYPASS_HEADER = 'x-vercel-protection-bypass';
+
 const SECRET_FIELD_NAMES = new Set([
   'token',
   'apikey',
@@ -16,14 +19,19 @@ const SECRET_FIELD_NAMES = new Set([
   'api_football_key',
   'openai_api_key',
   'blob_read_write_token',
-  'admin_render_token'
+  'admin_render_token',
+  'vercel_automation_bypass_secret',
+  'vercel_protection_bypass_secret'
 ]);
 const SECRET_MARKERS = [
   'sk-',
   'x-admin-render-token',
+  VERCEL_PROTECTION_BYPASS_HEADER,
   'BLOB_READ_WRITE_TOKEN',
   'OPENAI_API_KEY',
-  'API_FOOTBALL_KEY'
+  'API_FOOTBALL_KEY',
+  'VERCEL_AUTOMATION_BYPASS_SECRET',
+  'VERCEL_PROTECTION_BYPASS_SECRET'
 ];
 
 function cleanEnv(name) {
@@ -32,6 +40,14 @@ function cleanEnv(name) {
 
 function normaliseBaseUrl(value) {
   return String(value || '').trim().replace(/\/+$/, '');
+}
+
+function buildVercelProtectionHeaders() {
+  const secret = cleanEnv('VERCEL_AUTOMATION_BYPASS_SECRET') || cleanEnv('VERCEL_PROTECTION_BYPASS_SECRET');
+
+  return secret
+    ? { [VERCEL_PROTECTION_BYPASS_HEADER]: secret }
+    : {};
 }
 
 function buildRequestUrl(baseUrl, pathname) {
@@ -172,6 +188,7 @@ async function fetchWithCookies(url, options, cookieJar) {
 
   for (let redirectCount = 0; redirectCount < 6; redirectCount += 1) {
     const headers = {
+      ...buildVercelProtectionHeaders(),
       ...(options.headers || {})
     };
 
@@ -311,7 +328,7 @@ function validateForbiddenAdminCall(label, response, failures) {
 }
 
 async function main() {
-  const baseUrl = normaliseBaseUrl(cleanEnv('VERCEL_PREVIEW_URL'));
+  const baseUrl = normaliseBaseUrl(cleanEnv('VERCEL_PREVIEW_URL') || DEFAULT_VERCEL_PREVIEW_URL);
   const failures = [];
 
   if (!baseUrl) {
