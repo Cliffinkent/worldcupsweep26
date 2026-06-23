@@ -1,5 +1,12 @@
 const elements = {
-  root: document.querySelector('#eliminated-root'),
+  heroImg: document.querySelector('#dl-hero-img'),
+  heroFallback: document.querySelector('#dl-hero-fallback'),
+  sceneStatus: document.querySelector('#dl-scene-status'),
+  stats: document.querySelector('#dl-stats'),
+  board: document.querySelector('#dl-board'),
+  clock: document.querySelector('#dl-clock'),
+  thirdSlot: document.querySelector('#dl-third-slot'),
+  warnSlot: document.querySelector('#dl-warn-slot'),
   refreshButton: document.querySelector('#eliminated-refresh'),
   lastUpdated: document.querySelector('#last-updated'),
   providerStatus: document.querySelector('#provider-status')
@@ -50,27 +57,17 @@ function formatShortDate(value) {
 
 function eliminationTimingLabel(row) {
   if (row.eliminatedAt) {
-    return formatShortDate(row.eliminatedAt) || 'Confirmed';
+    return formatShortDate(row.eliminatedAt) || 'Out';
   }
 
   if (row.confirmedDate) {
-    return formatShortDate(`${row.confirmedDate}T12:00:00.000Z`) || 'Confirmed';
+    return formatShortDate(`${row.confirmedDate}T12:00:00.000Z`) || 'Out';
   }
 
-  return 'Confirmed';
+  return 'Out';
 }
 
-function eliminationReason(row) {
-  const reason = row.reason || row.sourceLabel || 'Elimination confirmed';
-
-  if (!row.eliminatedBy) {
-    return reason;
-  }
-
-  return `${reason} by ${row.eliminatedBy}`;
-}
-
-function renderFlag(row, size = 22) {
+function renderFlag(row, size) {
   if (!row.flagAsset) {
     return '';
   }
@@ -78,158 +75,13 @@ function renderFlag(row, size = 22) {
   const width = size;
   const height = Math.round(size * 0.75);
 
-  return `<img class="flag" src="${escapeHtml(row.flagAsset)}" width="${width}" height="${height}" alt="${escapeHtml(row.country)} flag" loading="lazy">`;
+  return `<img class="flag" src="${escapeHtml(row.flagAsset)}" width="${width}" height="${height}" alt="" loading="lazy">`;
 }
 
-function initials(country) {
-  const words = String(country || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Za-z\s]/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (!words.length) {
-    return 'FC';
-  }
-
-  if (words.length === 1) {
-    return words[0].slice(0, 3).toUpperCase();
-  }
-
-  return words.map((word) => word[0]).join('').slice(0, 3).toUpperCase();
-}
-
-function safeColour(value, fallback) {
-  const colour = String(value || '').trim();
-  return /^#[0-9a-f]{6}$/i.test(colour) ? colour : fallback;
-}
-
-function renderArm(team, side) {
-  const accent = safeColour(team.kitAccent, '#9ca3af');
-
-  if (team.poseVariant === 'waving' && side === 'right') {
-    return `<path d="M75 60 C92 42 96 32 91 22" fill="none" stroke="${accent}" stroke-width="8" stroke-linecap="round"/>`;
-  }
-
-  if (team.poseVariant === 'leaning' && side === 'left') {
-    return `<path d="M45 62 C32 73 28 83 34 92" fill="none" stroke="${accent}" stroke-width="8" stroke-linecap="round"/>`;
-  }
-
-  return side === 'left'
-    ? `<path d="M45 62 C34 68 31 78 37 87" fill="none" stroke="${accent}" stroke-width="8" stroke-linecap="round"/>`
-    : `<path d="M75 62 C86 68 89 78 83 87" fill="none" stroke="${accent}" stroke-width="8" stroke-linecap="round"/>`;
-}
-
-function renderPlayerSvg(team) {
-  const primary = safeColour(team.kitPrimary, '#1f2937');
-  const secondary = safeColour(team.kitSecondary, '#f9fafb');
-  const accent = safeColour(team.kitAccent, '#9ca3af');
-  const shirtText = initials(team.country);
-
-  return `<svg class="player-avatar__kit" viewBox="0 0 120 140" role="img" aria-hidden="true" focusable="false">
-    <ellipse cx="60" cy="125" rx="46" ry="8" fill="#d9d7ce"/>
-    <path d="M26 118 C36 105 84 105 94 118" fill="#15151e" opacity="0.2"/>
-    <circle cx="60" cy="30" r="17" fill="#b9825c"/>
-    <path d="M43 29 C47 13 72 10 78 27 C67 22 56 21 43 29Z" fill="#15151e"/>
-    <rect x="54" y="44" width="12" height="10" rx="4" fill="#b9825c"/>
-    ${renderArm(team, 'left')}
-    ${renderArm(team, 'right')}
-    <path d="M38 57 C43 48 77 48 82 57 L78 91 C71 97 49 97 42 91Z" fill="${primary}"/>
-    <path d="M47 92 H73 L81 115 H65 L60 101 L55 115 H39Z" fill="${secondary}"/>
-    <path d="M42 91 C51 97 69 97 78 91" fill="none" stroke="${accent}" stroke-width="4" stroke-linecap="round"/>
-    <rect x="46" y="63" width="28" height="17" rx="5" fill="#ffffff" opacity="0.18"/>
-    <text x="60" y="75" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="800" fill="#ffffff">${escapeHtml(shirtText)}</text>
-    <path d="M39 116 H54" stroke="${accent}" stroke-width="7" stroke-linecap="round"/>
-    <path d="M66 116 H81" stroke="${accent}" stroke-width="7" stroke-linecap="round"/>
-  </svg>`;
-}
-
-function renderSummary(summary, lastUpdated) {
-  const items = [
-    { value: summary.eliminatedCount || 0, label: 'Eliminated' },
-    { value: summary.mathematicalEliminationCount || 0, label: 'Automatic' },
-    { value: summary.atRiskCount || 0, label: 'At risk' },
-    { value: summary.activeCount || 0, label: 'Active' },
-    { value: formatDate(lastUpdated), label: 'Last updated' }
-  ];
-
-  return `<section class="departure-summary" aria-label="Elimination summary">
-    ${items.map((item) => `<div class="departure-summary__item"><strong>${escapeHtml(item.value)}</strong><span>${escapeHtml(item.label)}</span></div>`).join('')}
-  </section>`;
-}
-
-function renderPlayer(team) {
-  const owner = team.owner || 'Unassigned';
-  return `<article class="player-avatar" aria-label="${escapeHtml(team.country)}, owned by ${escapeHtml(owner)}, eliminated">
-    ${renderPlayerSvg(team)}
-    <div class="player-avatar__label">
-      <strong>${renderFlag(team, 18)}${escapeHtml(team.country)}</strong>
-      <span>${escapeHtml(owner)}</span>
-      <small>${escapeHtml(team.seatNumber)} · ${escapeHtml(eliminationTimingLabel(team))}</small>
-    </div>
-  </article>`;
-}
-
-function renderAirportScene(teams) {
-  const lounge = teams.length
-    ? `<div class="airport-seats">${teams.map(renderPlayer).join('')}</div>`
-    : '<div class="eliminated-empty-state">No one has checked in yet.</div>';
-
-  return `<section class="airport-scene" aria-label="Airport departure lounge">
-    <div class="airport-window" aria-hidden="true">
-      <span></span><span></span><span></span>
-    </div>
-    ${lounge}
-    <div class="airport-scene__floor" aria-hidden="true">
-      <span class="airport-scene__suitcase"></span>
-      <span class="airport-scene__suitcase airport-scene__suitcase--small"></span>
-    </div>
-  </section>`;
-}
-
-function renderDepartureBoard(rows) {
-  const body = rows.length
-    ? rows.map((row, index) => `<tr class="departure-board__row">
-      <td>${escapeHtml(eliminationTimingLabel(row) || `#${index + 1}`)}</td>
-      <td>${escapeHtml(row.flightCode)}</td>
-      <td>${renderFlag(row, 20)}${escapeHtml(row.country)}</td>
-      <td>${escapeHtml(row.owner || 'Unassigned')}</td>
-      <td>${escapeHtml(row.gate)}</td>
-      <td>${escapeHtml(row.flightStatus || row.status)}</td>
-      <td>${escapeHtml(eliminationReason(row))}</td>
-    </tr>`).join('')
-    : '<tr class="departure-board__row"><td colspan="7">No one has checked in yet.</td></tr>';
-
-  return `<section class="departure-board" aria-label="Departure board">
-    <div class="departure-board__header">
-      <h2>Departures</h2>
-      <span>Home</span>
-    </div>
-    <div class="departure-board__scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Order</th>
-            <th>Flight</th>
-            <th>Country</th>
-            <th>Owner</th>
-            <th>Gate</th>
-            <th>Status</th>
-            <th>Reason</th>
-          </tr>
-        </thead>
-        <tbody>${body}</tbody>
-      </table>
-    </div>
-  </section>`;
-}
-
-function generatedSceneStatusMessage(scene) {
-  switch (scene?.status) {
+function sceneStatusMessage(scene) {
+  switch (scene && scene.status) {
     case 'ready':
-      return 'Generated departure lounge ready';
+      return 'Generated lounge ready';
     case 'generation_disabled':
       return 'Generated lounge disabled';
     case 'storage_not_configured':
@@ -239,93 +91,143 @@ function generatedSceneStatusMessage(scene) {
     case 'empty':
       return 'No departures yet';
     case 'failed':
-      return 'Generated image unavailable, showing fallback';
+      return 'Generated image unavailable';
     case 'pending':
     case 'generating':
-      return 'Scene image pending';
+      return 'Scene image generating...';
     default:
-      return scene ? 'Scene image pending' : '';
+      return 'Departure lounge';
   }
 }
 
-function renderGeneratedSceneStatus(scene) {
-  const message = generatedSceneStatusMessage(scene);
-
-  if (!message) {
-    return '';
-  }
-
-  return `<p class="generated-scene__status" data-status="${escapeHtml(scene.status || 'unknown')}">${escapeHtml(message)}</p>`;
-}
-
-function renderSceneLounge(scene, teams) {
-  if (scene?.loungeImageUrl) {
-    return `<section class="generated-scene__lounge" aria-label="Generated departure lounge image">
-      <img src="${escapeHtml(scene.loungeImageUrl)}" alt="Generated illustrated departure lounge for eliminated teams" loading="lazy">
-    </section>`;
-  }
-
-  return `<div class="generated-scene__fallback">${renderAirportScene(teams)}</div>`;
-}
-
-function renderSceneBoard(scene, rows) {
-  if (scene?.boardImageUrl) {
-    return `<section class="generated-scene__board" aria-label="Rendered departure board image">
-      <img src="${escapeHtml(scene.boardImageUrl)}" alt="Rendered departure board for eliminated teams" loading="lazy">
-    </section>`;
-  }
-
-  return `<div class="generated-scene__fallback">${renderDepartureBoard(rows)}</div>`;
-}
-
-function renderGeneratedScene(data) {
+function renderHero(data) {
   const scene = data.generatedScene || null;
-  const loungeTeams = data.loungeTeams || [];
-  const departureBoard = data.departureBoard || [];
+  const url = scene && scene.loungeImageUrl;
 
-  return `<section class="generated-scene" aria-label="Generated departure scene">
-    ${renderGeneratedSceneStatus(scene)}
-    <div class="eliminated-layout">
-      ${renderSceneLounge(scene, loungeTeams)}
-      ${renderSceneBoard(scene, departureBoard)}
-    </div>
-  </section>`;
-}
-
-function renderPendingThirdPlace(rows) {
-  if (!rows.length) {
-    return '';
+  if (url) {
+    elements.heroImg.src = url;
+    elements.heroImg.hidden = false;
+    elements.heroFallback.hidden = true;
+  } else {
+    elements.heroImg.hidden = true;
+    elements.heroFallback.hidden = false;
+    elements.sceneStatus.textContent = sceneStatusMessage(scene);
   }
 
-  return `<section class="pending-third-place-panel">
-    <h2>Third-place pending</h2>
-    <p>These teams are out of the title race but still have the third-place play-off.</p>
-    <div class="pending-third-place-panel__teams">
-      ${rows.map((row) => `<span>${renderFlag(row, 18)}${escapeHtml(row.country)} <small>${escapeHtml(row.owner || '')}</small></span>`).join('')}
+  const summary = data.eliminationSummary || {};
+  const stats = [
+    { num: summary.eliminatedCount || 0, label: 'Eliminated' },
+    { num: summary.activeCount || 0, label: 'Still in', mod: 'alive' },
+    { num: summary.mathematicalEliminationCount || 0, label: 'Automatic' },
+    { num: summary.atRiskCount || 0, label: 'At risk' }
+  ];
+
+  elements.stats.innerHTML = stats.map((item) =>
+    `<div class="dl-stat${item.mod ? ' dl-stat--' + item.mod : ''}">
+       <div class="dl-stat__num">${escapeHtml(item.num)}</div>
+       <div class="dl-stat__label">${escapeHtml(item.label)}</div>
+     </div>`).join('');
+}
+
+const BOARD_COLUMNS = [
+  { key: 'when', len: 6 },
+  { key: 'flight', len: 5 },
+  { key: 'country', len: 13, flag: true },
+  { key: 'owner', len: 9 },
+  { key: 'gate', len: 3 },
+  { key: 'status', len: 8 }
+];
+
+let board = null;
+
+function stopBoard() {
+  if (board) {
+    board.stop();
+    board = null;
+  }
+}
+
+function compactFlightCode(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s*2026$/i, '26')
+    .replace(/\s+/g, '');
+}
+
+function compactGate(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^gate\s+/i, '');
+}
+
+function buildBoard(rows) {
+  const root = elements.board;
+  stopBoard();
+
+  if (!Array.isArray(rows) || !rows.length) {
+    root.innerHTML = '<div class="dl-empty">No nations have checked in yet - the lounge is empty.</div>';
+    return;
+  }
+
+  const mapped = rows.map((row) => ({
+    when: eliminationTimingLabel(row),
+    flight: compactFlightCode(row.flightCode),
+    country: row.country || '',
+    owner: row.owner || 'Unassigned',
+    gate: compactGate(row.gate),
+    status: row.flightStatus || row.status || 'Departed',
+    flagAsset: row.flagAsset || ''
+  }));
+
+  board = new FlipBoard(root, BOARD_COLUMNS);
+  board.build(mapped);
+  board.settle();
+}
+
+function playBoard() {
+  if (board) {
+    board.play();
+  }
+}
+
+function renderThird(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    elements.thirdSlot.innerHTML = '';
+    return;
+  }
+
+  elements.thirdSlot.innerHTML = `<section class="dl-third">
+    <div class="dl-third__head">
+      <h3>Third-place pending</h3>
+      <span class="dl-third__pill">${rows.length} ${rows.length === 1 ? 'team' : 'teams'}</span>
+    </div>
+    <p class="dl-third__note">Out of the title race, but still alive for the third-place play-off.</p>
+    <div class="dl-third__teams">
+      ${rows.map((row) => `<span class="dl-third__chip">
+        ${renderFlag(row, 30)}<strong>${escapeHtml(row.country)}</strong><span>${escapeHtml(row.owner || '')}</span>
+      </span>`).join('')}
     </div>
   </section>`;
 }
 
 function renderWarnings(warnings) {
-  if (!warnings.length) {
-    return '';
+  if (!Array.isArray(warnings) || !warnings.length) {
+    elements.warnSlot.innerHTML = '';
+    return;
   }
 
-  return `<section class="tp-alert tp-alert--warn">
-    <h3>Elimination warnings</h3>
-    <p>${warnings.map(escapeHtml).join(' ')}</p>
-  </section>`;
+  elements.warnSlot.innerHTML = `<div class="dl-warn"><div class="dl-warn__inner">
+    ${warnings.map(escapeHtml).join(' ')}
+  </div></div>`;
 }
 
 function render(data) {
   elements.lastUpdated.textContent = formatDate(data.lastUpdated);
-  elements.providerStatus.textContent = data.providerStatus?.providerStatus || 'unknown';
-  elements.root.innerHTML = [
-    renderWarnings(data.warnings || []),
-    renderSummary(data.eliminationSummary || {}, data.lastUpdated),
-    renderGeneratedScene(data),
-    renderPendingThirdPlace(data.pendingThirdPlaceTeams || [])
-  ].join('');
+  elements.providerStatus.textContent = (data.providerStatus && data.providerStatus.providerStatus) || 'unknown';
+  renderWarnings(data.warnings || []);
+  renderHero(data);
+  buildBoard(data.departureBoard || []);
+  renderThird(data.pendingThirdPlaceTeams || []);
 }
 
 async function loadEliminations() {
@@ -336,6 +238,7 @@ async function loadEliminations() {
   }
 
   render(await response.json());
+  playBoard();
 }
 
 async function refreshEliminations() {
@@ -345,9 +248,7 @@ async function refreshEliminations() {
   try {
     const response = await fetch('/api/refresh', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: { 'Content-Type': 'application/json' }
     });
 
     if (!response.ok) {
@@ -356,15 +257,68 @@ async function refreshEliminations() {
 
     await loadEliminations();
   } catch (error) {
-    elements.root.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+    elements.warnSlot.innerHTML = `<div class="dl-warn"><div class="dl-warn__inner">${escapeHtml(error.message)}</div></div>`;
   } finally {
     elements.refreshButton.disabled = false;
     elements.refreshButton.textContent = 'Refresh eliminations';
   }
 }
 
+function initClock() {
+  const root = elements.clock;
+  const cells = [];
+
+  '00:00:00'.split('').forEach(() => {
+    const cell = document.createElement('span');
+    cell.className = 'flap';
+
+    const char = document.createElement('span');
+    char.className = 'flap__char';
+    char.textContent = '0';
+
+    cell.appendChild(char);
+    cell._char = char;
+    cell._val = '0';
+    root.appendChild(cell);
+    cells.push(cell);
+  });
+
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function tick() {
+    const now = new Date();
+    const value = [now.getHours(), now.getMinutes(), now.getSeconds()]
+      .map((part) => String(part).padStart(2, '0')).join(':');
+    const changed = [];
+
+    value.split('').forEach((char, index) => {
+      const cell = cells[index];
+
+      if (cell._val !== char) {
+        cell._val = char;
+        cell._char.textContent = char;
+
+        if (!reduceMotion) {
+          cell.classList.remove('is-flip');
+          changed.push(cell);
+        }
+      }
+    });
+
+    if (changed.length) {
+      void root.offsetWidth;
+      changed.forEach((cell) => cell.classList.add('is-flip'));
+    }
+  }
+
+  tick();
+  setInterval(tick, 1000);
+}
+
 elements.refreshButton.addEventListener('click', refreshEliminations);
+initClock();
 
 loadEliminations().catch((error) => {
-  elements.root.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+  elements.sceneStatus.textContent = error.message;
+  elements.board.innerHTML = `<div class="dl-empty">${escapeHtml(error.message)}</div>`;
 });

@@ -7,6 +7,7 @@
     <link rel="icon" href="/assets/logo/app-icon.png" type="image/png" sizes="512x512">
     <link rel="apple-touch-icon" href="/assets/logo/app-icon.png" sizes="512x512">
     <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/eliminated.css">
   </head>
   <body>
     <header class="page-header">
@@ -38,27 +39,55 @@
       </nav>
     </header>
 
-    <main class="screen eliminated-screen">
-      <section class="eliminated-page__head">
-        <div>
-          <h2 class="sw-h2">Departure lounge</h2>
-          <p class="eliminated-intro">Eliminated teams will appear here once their tournament is over.</p>
-        </div>
-        <div class="tp-meta">
-          <span>Last updated</span>
-          <strong id="last-updated">...</strong>
+    <main class="screen eliminated-screen dl-main">
+      <section class="dl-hero" aria-label="Departure lounge scene">
+        <img id="dl-hero-img" class="dl-hero__media" alt="Generated departure lounge for eliminated teams" hidden>
+        <div id="dl-hero-fallback" class="dl-hero__fallback"><span id="dl-scene-status">Loading departure lounge...</span></div>
+        <div class="dl-hero__scrim"></div>
+        <div class="dl-hero__inner">
+          <div>
+            <span class="dl-eyebrow">World Cup 2026 &middot; Knocked out</span>
+            <h1 class="dl-hero__title">Departure lounge</h1>
+            <p class="dl-hero__lede">Every nation that's out of the tournament checks in here. Bags packed, boarding passes printed - see who's flying home.</p>
+          </div>
+          <div class="dl-stats" id="dl-stats"></div>
         </div>
       </section>
 
-      <div id="eliminated-root">
-        <section class="generated-scene" aria-label="Generated departure scene">
-          <p class="generated-scene__status">Loading departure lounge...</p>
-          <div class="eliminated-layout">
-            <div class="generated-scene__lounge generated-scene__fallback"></div>
-            <div class="generated-scene__board generated-scene__fallback"></div>
+      <div id="dl-warn-slot"></div>
+
+      <section class="dl-section">
+        <div class="dl-section__head">
+          <h2>Departures board</h2>
+          <p class="dl-section__meta">Most recent exits first &middot; last updated <strong id="last-updated">...</strong></p>
+        </div>
+
+        <div class="flip-board">
+          <div class="flip-board__head">
+            <div class="flip-board__title">
+              <h3>Departures</h3>
+              <span class="flip-live"><span class="flip-live__dot"></span> Live</span>
+            </div>
+            <div class="flip-board__clock">
+              <span class="flap-group" id="dl-clock" aria-hidden="true"></span>
+              <span class="flip-board__date">Local time</span>
+            </div>
           </div>
-        </section>
-      </div>
+          <div class="flip-colhead" aria-hidden="true">
+            <span>When</span>
+            <span>Flight</span>
+            <span>Destination</span>
+            <span>Owner</span>
+            <span>Gate</span>
+            <span>Status</span>
+          </div>
+          <div class="flip-board__scroll">
+            <div class="flip-board__rows" id="dl-board"></div>
+          </div>
+        </div>
+
+        <div id="dl-third-slot"></div>
+      </section>
     </main>
 
     <footer class="footer">
@@ -66,6 +95,7 @@
       <span class="footer__meta">Provider <span id="provider-status">...</span></span>
     </footer>
 
+    <script src="/flipboard.js"></script>
     <script src="/eliminated.js"></script>
   </body>
 </html>
