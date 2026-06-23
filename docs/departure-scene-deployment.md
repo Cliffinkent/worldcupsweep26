@@ -13,6 +13,7 @@ Run these before merging PR #6:
 - `npm run smoke:departure-scene`
 
 `npm run smoke:departure-scene` requires `VERCEL_PREVIEW_URL` in `.env`.
+For protected Vercel previews, `VERCEL_PREVIEW_URL` may be a temporary Vercel share URL. Do not commit share URLs.
 
 ## Required Vercel Env Vars
 

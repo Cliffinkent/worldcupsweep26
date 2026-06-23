@@ -34,6 +34,17 @@ function normaliseBaseUrl(value) {
   return String(value || '').trim().replace(/\/+$/, '');
 }
 
+function buildRequestUrl(baseUrl, pathname) {
+  const base = new URL(baseUrl);
+  const url = new URL(pathname, `${base.protocol}//${base.host}`);
+
+  for (const [key, value] of base.searchParams) {
+    url.searchParams.set(key, value);
+  }
+
+  return url;
+}
+
 function resultLine(status, label, detail = '') {
   console.log(`${status} ${label}${detail ? `: ${detail}` : ''}`);
 }
@@ -126,12 +137,79 @@ function assertSafeResponse(label, response) {
   }
 }
 
+function splitSetCookieHeader(value) {
+  return String(value || '')
+    .split(/,(?=\s*[^;,\s]+=)/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function storeCookies(cookieJar, response) {
+  const getSetCookie = response.headers.getSetCookie?.bind(response.headers);
+  const setCookieHeaders = getSetCookie
+    ? getSetCookie()
+    : splitSetCookieHeader(response.headers.get('set-cookie'));
+
+  for (const header of setCookieHeaders) {
+    const cookiePair = header.split(';')[0];
+    const equalsIndex = cookiePair.indexOf('=');
+
+    if (equalsIndex > 0) {
+      cookieJar.set(cookiePair.slice(0, equalsIndex), cookiePair.slice(equalsIndex + 1));
+    }
+  }
+}
+
+function cookieHeader(cookieJar) {
+  return [...cookieJar.entries()]
+    .map(([key, value]) => `${key}=${value}`)
+    .join('; ');
+}
+
+async function fetchWithCookies(url, options, cookieJar) {
+  let currentUrl = url.toString();
+  let method = options.method || 'GET';
+
+  for (let redirectCount = 0; redirectCount < 6; redirectCount += 1) {
+    const headers = {
+      ...(options.headers || {})
+    };
+
+    if (cookieJar.size) {
+      headers.Cookie = cookieHeader(cookieJar);
+    }
+
+    const response = await fetch(currentUrl, {
+      method,
+      headers,
+      redirect: 'manual'
+    });
+
+    storeCookies(cookieJar, response);
+
+    if (![301, 302, 303, 307, 308].includes(response.status)) {
+      return response;
+    }
+
+    const location = response.headers.get('location');
+
+    if (!location) {
+      return response;
+    }
+
+    if (response.status === 303) {
+      method = 'GET';
+    }
+
+    currentUrl = new URL(location, currentUrl).toString();
+  }
+
+  throw new Error('Too many redirects while fetching preview URL.');
+}
+
 async function request(baseUrl, pathname, options = {}) {
-  const url = new URL(pathname, `${baseUrl}/`);
-  const response = await fetch(url, {
-    method: options.method || 'GET',
-    headers: options.headers || {}
-  });
+  const url = buildRequestUrl(baseUrl, pathname);
+  const response = await fetchWithCookies(url, options, request.cookieJar);
   const text = await response.text();
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
   let json = null;
@@ -152,6 +230,8 @@ async function request(baseUrl, pathname, options = {}) {
     json
   };
 }
+
+request.cookieJar = new Map();
 
 function expect(condition, label, failures, detail = '') {
   if (condition) {
