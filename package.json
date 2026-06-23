@@ -10,6 +10,8 @@
     "check:blob": "node scripts/check-vercel-blob.js",
     "check:departure-scene": "node scripts/check-departure-scene.js",
     "dev": "node --watch-path=server.js --watch-path=src server.js",
+    "manual:generate-departure-scene": "node scripts/manual-generate-departure-scene.js",
+    "smoke:departure-scene": "node scripts/smoke-vercel-departure-scene.js",
     "test": "node scripts/assert-table-calculation.js && node scripts/assert-bracket-projection.js && node scripts/assert-eliminations.js",
     "start": "node server.js"
   },
