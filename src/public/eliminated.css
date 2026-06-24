@@ -512,6 +512,18 @@
   .flip-board__title h3 {
     font-size: var(--text-2xl);
   }
+
+  /* Drop the Flight column on mobile so the team has a clean, uncrowded view */
+  .flip-colhead__flight,
+  .flip-cell--flight {
+    display: none;
+  }
+
+  .flip-colhead,
+  .flip-row {
+    grid-template-columns: 112px minmax(280px, 1fr) 210px 76px 184px;
+    min-width: 900px;
+  }
 }
 
 @media (min-width: 1440px) {

@@ -49,10 +49,10 @@ function formatShortDate(value) {
     return value;
   }
 
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short'
-  }).format(date);
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+
+  return `${dd}/${mm}`;
 }
 
 function eliminationTimingLabel(row) {
