@@ -94,6 +94,15 @@ function hasAdminRenderToken() {
   return Boolean(String(process.env.ADMIN_RENDER_TOKEN || '').trim());
 }
 
+function canGenerateDepartureScene() {
+  return (
+    hasBlobToken() &&
+    hasAdminRenderToken() &&
+    imageGenerationEnabled() &&
+    hasOpenAiKey()
+  );
+}
+
 function safeTokenCompare(expectedValue, providedValue) {
   const expected = Buffer.from(String(expectedValue || ''));
   const provided = Buffer.from(String(providedValue || ''));
@@ -121,18 +130,22 @@ async function buildEliminatedTeamsResponse() {
   const eliminatedData = await getEliminatedTeamsData();
   const generatedScene = await getOrGenerateDepartureSceneState({
     eliminatedData,
-    canGenerate: (
-      hasBlobToken() &&
-      hasAdminRenderToken() &&
-      imageGenerationEnabled() &&
-      hasOpenAiKey()
-    )
+    canGenerate: canGenerateDepartureScene()
   });
 
   return {
     ...eliminatedData,
     generatedScene
   };
+}
+
+async function buildDepartureSceneAfterRefresh() {
+  const eliminatedData = await getEliminatedTeamsData();
+
+  return getOrGenerateDepartureSceneState({
+    eliminatedData,
+    canGenerate: canGenerateDepartureScene()
+  });
 }
 
 function serialiseDebugAsset(asset) {
@@ -288,7 +301,13 @@ router.post('/refresh', refreshLimiter, asyncHandler(async (req, res) => {
     return;
   }
 
-  res.json(await refreshData());
+  const refreshedData = await refreshData();
+  const generatedScene = await buildDepartureSceneAfterRefresh();
+
+  res.json({
+    ...refreshedData,
+    generatedScene
+  });
 }));
 
 router.post(

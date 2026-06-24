@@ -32,9 +32,11 @@ Keep `IMAGE_GENERATION_ENABLED=false` until ready to allow generated lounge imag
 2. Deploy to production.
 3. Set `IMAGE_GENERATION_ENABLED=true` only when ready.
 4. Confirm `/api/debug/departure-scene` reports `hasOpenAiKey`, `imageGenerationEnabled`, `hasBlobToken`, `hasAdminRenderToken`, and `automaticGenerationEnabled` as true.
-5. Visit `/eliminated.html` or request `/api/eliminated-teams`; the backend will generate missing scene assets when the current scene is missing.
+5. Run `POST /api/refresh`; once refreshed elimination data includes a new current scene hash, the backend will generate missing scene assets before the refresh response returns.
 6. Confirm `/api/eliminated-teams` returns `generatedScene.status === "ready"`.
 7. Confirm `/eliminated.html` shows the generated lounge and departure board images.
+
+`GET /api/eliminated-teams` also repairs missing scene assets as a fallback, but the normal creation trigger is the backend refresh that detects the changed eliminated-team set.
 
 Manual generation remains available for forced retries:
 
@@ -49,7 +51,7 @@ Manual generation remains available for forced retries:
 
 ## Safety Rules
 
-- `POST /api/refresh` must not generate images.
+- `POST /api/refresh` may generate missing scene assets after refreshed elimination data changes the current scene hash.
 - `GET /api/eliminated-teams` may generate missing scene assets only when Blob, OpenAI, image generation, and admin render token env vars are configured server-side.
 - Other `GET` routes must not upload departure scene assets to Blob.
 - Only admin routes and explicit health/check scripts may write generated scene assets.
