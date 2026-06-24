@@ -216,33 +216,6 @@ function resolveGroupTables(fixtures, standings) {
   };
 }
 
-function getEliminatedTeamIds(fixtures) {
-  const lookup = buildTeamLookup(sweepstakeTeams);
-  const eliminated = new Set();
-
-  fixtures
-    .filter((fixture) => fixture.status === 'finished' && KNOCKOUT_ROUNDS.has(fixture.round) && fixture.winner)
-    .forEach((fixture) => {
-      const homeTeam = findTeamByName(lookup, fixture.homeTeam);
-      const awayTeam = findTeamByName(lookup, fixture.awayTeam);
-      const winningTeam = findTeamByName(lookup, fixture.winner);
-
-      if (!homeTeam || !awayTeam || !winningTeam) {
-        return;
-      }
-
-      if (homeTeam.id !== winningTeam.id) {
-        eliminated.add(homeTeam.id);
-      }
-
-      if (awayTeam.id !== winningTeam.id) {
-        eliminated.add(awayTeam.id);
-      }
-    });
-
-  return eliminated;
-}
-
 function getTodayDate() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -339,9 +312,31 @@ function buildLiveFixturesDebug(fixtures, liveFixtures) {
   };
 }
 
-function buildParticipantSummaries(groupTables, fixtures, liveFixtures) {
+function buildTeamStatusByCountry(eliminationData) {
+  const statusByCountry = new Map();
+
+  (eliminationData?.activeTeams || []).forEach((team) => {
+    statusByCountry.set(team.country, team.status || 'active');
+  });
+
+  (eliminationData?.atRiskTeams || []).forEach((team) => {
+    statusByCountry.set(team.country, 'at_risk');
+  });
+
+  (eliminationData?.pendingThirdPlaceTeams || []).forEach((team) => {
+    statusByCountry.set(team.country, 'third_place_pending');
+  });
+
+  (eliminationData?.departureBoard || []).forEach((team) => {
+    statusByCountry.set(team.country, 'eliminated');
+  });
+
+  return statusByCountry;
+}
+
+function buildParticipantSummaries(groupTables, fixtures, liveFixtures, eliminationData = null) {
   const tableStats = new Map();
-  const eliminatedTeamIds = getEliminatedTeamIds(fixtures);
+  const statusByCountry = buildTeamStatusByCountry(eliminationData);
   const liveTeamIds = getLiveTeamIdsPlayingToday([
     ...fixtures.filter(fixtureIsLiveSectionEligible),
     ...liveFixtures
@@ -367,11 +362,13 @@ function buildParticipantSummaries(groupTables, fixtures, liveFixtures) {
       liveTeamsPlayingToday: 0
     };
 
+    const status = statusByCountry.get(team.country) || 'active';
     const teamSummary = {
       id: team.id,
       country: team.country,
       flag: team.flag,
       group: team.group,
+      status,
       points: tableStats.get(team.id)?.points || 0,
       goalDifference: tableStats.get(team.id)?.goalDifference || 0
     };
@@ -379,7 +376,7 @@ function buildParticipantSummaries(groupTables, fixtures, liveFixtures) {
     summary[team.owner].assignedTeams.push(teamSummary);
     summary[team.owner].totalGroupPoints += teamSummary.points;
 
-    if (!eliminatedTeamIds.has(team.id)) {
+    if (teamSummary.status !== 'eliminated') {
       summary[team.owner].teamsStillAlive += 1;
     }
 
@@ -424,7 +421,6 @@ async function getSweepstakeData() {
   const liveFixtures = attachBroadcasts(rawLiveFixtures);
   const groups = groupTeams();
   const { groupTables, groupTableSource } = resolveGroupTables(fixtures, standings);
-  const players = buildParticipantSummaries(groupTables, fixtures, liveFixtures);
   const providerStatus = getProviderStatus();
   const generatedAt = new Date().toISOString();
   const bracketProjection = buildBracketProjection({
@@ -434,6 +430,14 @@ async function getSweepstakeData() {
     providerStatus,
     generatedAt
   });
+  const eliminationData = buildEliminationData({
+    groupTables,
+    fixtures,
+    bracketProjection,
+    providerStatus,
+    generatedAt
+  });
+  const players = buildParticipantSummaries(groupTables, fixtures, liveFixtures, eliminationData);
 
   return {
     generatedAt,
@@ -445,6 +449,7 @@ async function getSweepstakeData() {
     thirdPlaceGroupsProjectedToQualify: bracketProjection.thirdPlaceGroupsProjectedToQualify,
     annexCKey: bracketProjection.annexCKey,
     annexCMappingStatus: bracketProjection.annexCMappingStatus,
+    teamStatusSummary: eliminationData.teamStatusSummary,
     teams: sweepstakeTeams,
     groups,
     groupTables,
@@ -692,6 +697,13 @@ async function refreshData() {
     providerStatus,
     generatedAt
   });
+  const eliminationData = buildEliminationData({
+    groupTables,
+    fixtures,
+    bracketProjection,
+    providerStatus,
+    generatedAt
+  });
 
   console.log('world-cup refresh', {
     fixtureCount: fixtures.length,
@@ -710,13 +722,14 @@ async function refreshData() {
     thirdPlaceGroupsProjectedToQualify: bracketProjection.thirdPlaceGroupsProjectedToQualify,
     annexCKey: bracketProjection.annexCKey,
     annexCMappingStatus: bracketProjection.annexCMappingStatus,
+    teamStatusSummary: eliminationData.teamStatusSummary,
     fixtureCount: fixtures.length,
     fixtures: groupFixturesByDate(fixtures),
     groupTables,
     roundOf32: bracketProjection.roundOf32,
     laterRounds: bracketProjection.laterRounds,
     bracket: bracketProjection.bracket,
-    players: buildParticipantSummaries(groupTables, fixtures, liveFixtures)
+    players: buildParticipantSummaries(groupTables, fixtures, liveFixtures, eliminationData)
   };
 }
 

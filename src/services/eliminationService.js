@@ -839,6 +839,28 @@ function sourceCounts(eliminatedRecords, pendingThirdPlaceTeams) {
   };
 }
 
+function buildTeamStatusSummary({
+  teams = sweepstakeTeams,
+  eliminatedRecords = [],
+  activeTeams = [],
+  atRiskTeams = [],
+  pendingThirdPlaceTeams = []
+} = {}) {
+  const qualifiedTeams = activeTeams.filter((team) => team.status === 'qualified').length;
+  const activeTeamCount = Math.max(0, activeTeams.length - qualifiedTeams);
+  const eliminatedTeams = eliminatedRecords.length;
+
+  return {
+    totalTeams: teams.length,
+    teamsInPlay: Math.max(0, teams.length - eliminatedTeams),
+    eliminatedTeams,
+    activeTeams: activeTeamCount,
+    atRiskTeams: atRiskTeams.length,
+    qualifiedTeams,
+    thirdPlacePendingTeams: pendingThirdPlaceTeams.length
+  };
+}
+
 function stripInternalFields(row) {
   const { teamId, visualSource, ...publicRow } = row;
   return publicRow;
@@ -939,17 +961,27 @@ function buildEliminationData({
   const atRiskTeams = nonEliminatedTeams.filter((team) => team.status === 'at_risk');
   const activeTeams = nonEliminatedTeams.filter((team) => team.status !== 'at_risk');
   const counts = sourceCounts(eliminatedRecords, pendingThirdPlaceTeams);
+  const teamStatusSummary = buildTeamStatusSummary({
+    teams,
+    eliminatedRecords,
+    activeTeams,
+    atRiskTeams,
+    pendingThirdPlaceTeams
+  });
   const payload = {
     lastUpdated: generatedAt,
     providerStatus,
     eliminationSummary: {
       eliminatedCount: eliminatedRecords.length,
+      totalTeams: teamStatusSummary.totalTeams,
+      teamsInPlay: teamStatusSummary.teamsInPlay,
       activeCount: activeTeams.length,
       atRiskCount: atRiskTeams.length,
       pendingThirdPlaceCount: pendingThirdPlaceTeams.length,
       mathematicalEliminationCount: counts.mathematicalEliminations,
       manualOverrideCount: counts.manualOverrides
     },
+    teamStatusSummary,
     departureBoard: departureBoardInternal.map(stripInternalFields),
     loungeTeams: loungeTeamsInternal.map(stripInternalFields),
     pendingThirdPlaceTeams,
@@ -985,6 +1017,12 @@ function buildEliminationsDebug(context = {}) {
   const eliminatedCountries = data.departureBoard.map((team) => team.country);
   const activeCountries = new Set(data.activeTeams.map((team) => team.country));
   const atRiskCountries = new Set((data.atRiskTeams || []).map((team) => team.country));
+  const pendingThirdPlaceCountries = new Set((data.pendingThirdPlaceTeams || []).map((team) => team.country));
+  const inPlayCountries = new Set([
+    ...activeCountries,
+    ...atRiskCountries,
+    ...pendingThirdPlaceCountries
+  ]);
   const loungeCountries = new Set(data.loungeTeams.map((team) => team.country));
   const boardCountries = new Set(data.departureBoard.map((team) => team.country));
   const manualOverrideChecks = data._debug.manualOverrideChecks || [];
@@ -1001,7 +1039,14 @@ function buildEliminationsDebug(context = {}) {
     noWorldCupWinnerEliminated: !finalWinner || !eliminatedCountries.includes(finalWinner),
     noActiveTeamInDepartureLounge: data.loungeTeams.every((team) => !activeCountries.has(team.country)),
     noAtRiskTeamInDepartureLounge: data.loungeTeams.every((team) => !atRiskCountries.has(team.country)),
+    noPendingThirdPlaceTeamInDepartureLounge: data.loungeTeams.every((team) => !pendingThirdPlaceCountries.has(team.country)),
+    noEliminatedTeamCountedInPlay: eliminatedCountries.every((country) => !inPlayCountries.has(country)),
     noDuplicateEliminatedTeams: !hasDuplicates(eliminatedCountries),
+    teamStatusSummaryMatchesEliminations: (
+      data.teamStatusSummary.totalTeams === (context.teams || sweepstakeTeams).length &&
+      data.teamStatusSummary.eliminatedTeams === eliminatedCountries.length &&
+      data.teamStatusSummary.teamsInPlay === data.teamStatusSummary.totalTeams - eliminatedCountries.length
+    ),
     allEliminatedTeamsHaveVisuals: data._debug.loungeTeams.every((team) => team.visualSource === 'configured'),
     allEliminatedTeamsHaveOwners: data.departureBoard.every((team) => Boolean(team.owner))
   };
@@ -1039,8 +1084,20 @@ function buildEliminationsDebug(context = {}) {
     errors.push('An at-risk team appears in the departure lounge.');
   }
 
+  if (!checks.noPendingThirdPlaceTeamInDepartureLounge) {
+    errors.push('A third-place pending team appears in the departure lounge.');
+  }
+
+  if (!checks.noEliminatedTeamCountedInPlay) {
+    errors.push('An eliminated team is counted as still in play.');
+  }
+
   if (!checks.noDuplicateEliminatedTeams) {
     errors.push('Duplicate countries appear in the eliminated teams list.');
+  }
+
+  if (!checks.teamStatusSummaryMatchesEliminations) {
+    errors.push('Team status summary does not match the eliminated team count.');
   }
 
   if (!checks.allEliminatedTeamsHaveVisuals) {
@@ -1057,6 +1114,7 @@ function buildEliminationsDebug(context = {}) {
     errors,
     warnings: data.warnings,
     sourceCounts: data._debug.sourceCounts,
+    teamStatusSummary: data.teamStatusSummary,
     eliminatedTeams: data.departureBoard.map((team) => ({
       country: team.country,
       source: team.source,
@@ -1077,6 +1135,7 @@ function buildEliminationsDebug(context = {}) {
 module.exports = {
   buildEliminationData,
   buildEliminationsDebug,
+  buildTeamStatusSummary,
   getGroupMatchCount,
   isGroupComplete
 };

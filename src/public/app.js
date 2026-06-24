@@ -37,15 +37,6 @@ const fixtureAutoRefresh = {
 let fixtureJumpMessageTimer = null;
 let fixtureJumpHighlightTimer = null;
 
-const KNOCKOUT_ROUNDS = new Set([
-  'Round of 32',
-  'Round of 16',
-  'Quarter-finals',
-  'Semi-finals',
-  'Third-place play-off',
-  'Final'
-]);
-
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -287,14 +278,12 @@ function getFixtureTeam(apiName) {
 }
 
 /* Single memoised pass over the fixtures tree (keyed on the loaded payload)
-   produces both the eliminated-team set and the live-match count. */
+   produces the live-match count. Team status comes from the backend payload. */
 function getFixtureStats() {
   if (state.fixtureStats && state.fixtureStatsFor === state.data) {
     return state.fixtureStats;
   }
 
-  const { byName } = getTeamIndex();
-  const eliminated = new Set();
   let liveCount = 0;
 
   (state.data?.fixtures || []).forEach((day) => {
@@ -302,40 +291,33 @@ function getFixtureStats() {
       if (isFixtureLiveSectionEligible(match)) {
         liveCount += 1;
       }
-
-      if (match.status !== 'finished' || !KNOCKOUT_ROUNDS.has(match.round) || !match.winner) {
-        return;
-      }
-
-      const home = byName.get(normaliseTeamName(match.homeTeam));
-      const away = byName.get(normaliseTeamName(match.awayTeam));
-      const winner = byName.get(normaliseTeamName(match.winner));
-
-      if (!home || !away || !winner) {
-        return;
-      }
-
-      if (home.id !== winner.id) {
-        eliminated.add(home.id);
-      }
-
-      if (away.id !== winner.id) {
-        eliminated.add(away.id);
-      }
     });
   });
 
-  state.fixtureStats = { eliminated, liveCount };
+  state.fixtureStats = { liveCount };
   state.fixtureStatsFor = state.data;
   return state.fixtureStats;
 }
 
-function getEliminatedTeamIds() {
-  return getFixtureStats().eliminated;
-}
-
 function getLiveCount() {
   return getFixtureStats().liveCount;
+}
+
+function numericSummaryValue(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+function getTeamStatusOverview() {
+  const fallbackTotal = (state.data?.teams || []).length;
+  const summary = state.data?.teamStatusSummary || {};
+  const totalTeams = numericSummaryValue(summary.totalTeams) ?? fallbackTotal;
+  const teamsInPlay = numericSummaryValue(summary.teamsInPlay) ?? totalTeams;
+
+  return {
+    totalTeams,
+    teamsInPlay
+  };
 }
 
 function ownsTeam(team) {
@@ -454,9 +436,9 @@ function screenLeaderboard() {
     return `${sectionHead('Leaderboard', 'No players loaded yet')}<p class="empty">No data.</p>`;
   }
 
-  const eliminated = getEliminatedTeamIds();
   const leader = players[0];
   const liveCount = getLiveCount();
+  const teamStatusOverview = getTeamStatusOverview();
 
   const filteredIndex = state.filterOwner
     ? players.findIndex((player) => player.owner === state.filterOwner)
@@ -464,7 +446,7 @@ function screenLeaderboard() {
   const hero = filteredIndex >= 0 ? ownerHero(players[filteredIndex], filteredIndex + 1) : '';
 
   const stats = [
-    statCard({ value: (state.data.teams || []).length, label: 'Teams in play' }),
+    statCard({ value: `${teamStatusOverview.teamsInPlay} / ${teamStatusOverview.totalTeams}`, label: 'Teams in play' }),
     statCard({ value: players.length, label: 'Players' }),
     statCard({ value: leader.totalGroupPoints, label: 'Top score', variant: 'accent', hint: `${leader.owner} leads` }),
     statCard({ value: liveCount, label: 'Live now', variant: 'ink', hint: liveCount ? 'Matches in play' : 'Nothing live' })
@@ -480,7 +462,7 @@ function screenLeaderboard() {
       .slice()
       .sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference)
       .map((team) => {
-        const alive = !eliminated.has(team.id);
+        const alive = team.status !== 'eliminated';
         return `<div class="sw-teamline">${teamChip({
           country: team.country,
           flag: renderFlag(team, 20),
