@@ -20,11 +20,13 @@ const {
 const { getBlobStorageStatus } = require('../services/blobStorageService');
 const {
   getDepartureSceneState,
+  getOrGenerateDepartureSceneState,
   ensureDepartureSceneGenerated,
   getExistingSceneAssets,
   assetPath,
   imageGenerationEnabled,
-  hasOpenAiKey
+  hasOpenAiKey,
+  automaticGenerationEnabled
 } = require('../services/departureSceneService');
 
 const router = express.Router();
@@ -117,7 +119,15 @@ function requireAdminRenderToken(req, res, next) {
 
 async function buildEliminatedTeamsResponse() {
   const eliminatedData = await getEliminatedTeamsData();
-  const generatedScene = await getDepartureSceneState({ eliminatedData });
+  const generatedScene = await getOrGenerateDepartureSceneState({
+    eliminatedData,
+    canGenerate: (
+      hasBlobToken() &&
+      hasAdminRenderToken() &&
+      imageGenerationEnabled() &&
+      hasOpenAiKey()
+    )
+  });
 
   return {
     ...eliminatedData,
@@ -229,6 +239,7 @@ router.get('/debug/departure-scene', asyncHandler(async (req, res) => {
     generatedAt: new Date().toISOString(),
     hasOpenAiKey: hasOpenAiKey(),
     imageGenerationEnabled: imageGenerationEnabled(),
+    automaticGenerationEnabled: automaticGenerationEnabled(),
     hasBlobToken: hasBlobToken(),
     hasAdminRenderToken: hasAdminRenderToken(),
     currentSceneHash: generatedScene.sceneHash,

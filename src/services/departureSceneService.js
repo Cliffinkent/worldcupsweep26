@@ -14,6 +14,7 @@ const { renderDepartureBoardSvg } = require('./departureBoardRenderService');
 const LOUNGE_FILENAME = 'lounge.png';
 const BOARD_FILENAME = 'departure-board.svg';
 const MANIFEST_FILENAME = 'manifest.json';
+const generationLocks = new Map();
 
 class DepartureSceneError extends Error {
   constructor(code, message) {
@@ -37,6 +38,10 @@ function imageGenerationEnabled() {
 
 function hasOpenAiKey() {
   return Boolean(cleanText(process.env.OPENAI_API_KEY));
+}
+
+function automaticGenerationEnabled() {
+  return process.env.AUTOMATIC_DEPARTURE_SCENE_GENERATION !== 'false';
 }
 
 function assetPath(sceneHash, filename) {
@@ -106,6 +111,10 @@ function missingAssetStatus(assets) {
   }
 
   return 'assets_missing';
+}
+
+function canRepairMissingScene(status) {
+  return status === 'assets_missing' || status === 'board_ready_lounge_missing';
 }
 
 function buildSceneResponse({
@@ -497,9 +506,7 @@ async function getDepartureSceneState({ eliminatedData } = {}) {
   });
 }
 
-async function ensureDepartureSceneGenerated({ force = false } = {}) {
-  const eliminatedData = await getEliminatedTeamsData();
-
+async function ensureDepartureSceneGeneratedForData({ eliminatedData, force = false } = {}) {
   return resolveDepartureScene({
     eliminatedData,
     force,
@@ -508,13 +515,46 @@ async function ensureDepartureSceneGenerated({ force = false } = {}) {
   });
 }
 
+async function ensureDepartureSceneGenerated({ force = false } = {}) {
+  const eliminatedData = await getEliminatedTeamsData();
+
+  return ensureDepartureSceneGeneratedForData({ eliminatedData, force });
+}
+
+async function getOrGenerateDepartureSceneState({ eliminatedData, canGenerate = false } = {}) {
+  const currentScene = await getDepartureSceneState({ eliminatedData });
+
+  if (
+    !canGenerate ||
+    !automaticGenerationEnabled() ||
+    !canRepairMissingScene(currentScene.status) ||
+    !currentScene.sceneHash
+  ) {
+    return currentScene;
+  }
+
+  if (!generationLocks.has(currentScene.sceneHash)) {
+    const generation = ensureDepartureSceneGeneratedForData({ eliminatedData, force: false })
+      .finally(() => {
+        generationLocks.delete(currentScene.sceneHash);
+      });
+
+    generationLocks.set(currentScene.sceneHash, generation);
+  }
+
+  return generationLocks.get(currentScene.sceneHash);
+}
+
 module.exports = {
   getDepartureSceneState,
+  getOrGenerateDepartureSceneState,
   ensureDepartureSceneGenerated,
+  ensureDepartureSceneGeneratedForData,
   generateDepartureLoungeImage,
   generateAndStoreDepartureBoard,
   getExistingSceneAssets,
   assetPath,
   imageGenerationEnabled,
-  hasOpenAiKey
+  hasOpenAiKey,
+  automaticGenerationEnabled
 };

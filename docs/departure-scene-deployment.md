@@ -22,18 +22,24 @@ For protected Vercel previews, `VERCEL_PREVIEW_URL` may be a temporary Vercel sh
 - `IMAGE_GENERATION_ENABLED`
 - `ADMIN_RENDER_TOKEN`
 - `DEPARTURE_SCENE_STYLE_VERSION`
+- `AUTOMATIC_DEPARTURE_SCENE_GENERATION` (optional; defaults to true, set to `false` to require manual generation)
 
-Keep `IMAGE_GENERATION_ENABLED=false` until ready to manually generate the lounge image.
+Keep `IMAGE_GENERATION_ENABLED=false` until ready to allow generated lounge images.
 
 ## Production Generation
 
 1. Merge PR #6.
 2. Deploy to production.
 3. Set `IMAGE_GENERATION_ENABLED=true` only when ready.
-4. Set `VERCEL_PROD_URL` and `ADMIN_RENDER_TOKEN` locally.
-5. Run `npm run manual:generate-departure-scene`.
+4. Confirm `/api/debug/departure-scene` reports `hasOpenAiKey`, `imageGenerationEnabled`, `hasBlobToken`, `hasAdminRenderToken`, and `automaticGenerationEnabled` as true.
+5. Visit `/eliminated.html` or request `/api/eliminated-teams`; the backend will generate missing scene assets when the current scene is missing.
 6. Confirm `/api/eliminated-teams` returns `generatedScene.status === "ready"`.
 7. Confirm `/eliminated.html` shows the generated lounge and departure board images.
+
+Manual generation remains available for forced retries:
+
+1. Set `VERCEL_PROD_URL` and `ADMIN_RENDER_TOKEN` locally.
+2. Run `npm run manual:generate-departure-scene`.
 
 ## Rollback
 
@@ -44,8 +50,8 @@ Keep `IMAGE_GENERATION_ENABLED=false` until ready to manually generate the loung
 ## Safety Rules
 
 - `POST /api/refresh` must not generate images.
-- `GET /api/eliminated-teams` must not generate images.
-- `GET` routes must not upload departure scene assets to Blob.
+- `GET /api/eliminated-teams` may generate missing scene assets only when Blob, OpenAI, image generation, and admin render token env vars are configured server-side.
+- Other `GET` routes must not upload departure scene assets to Blob.
 - Only admin routes and explicit health/check scripts may write generated scene assets.
 - The admin routes are `POST /api/admin/departure-scene/regenerate` and `POST /api/admin/departure-scene/generate-if-missing`.
 - Do not expose `ADMIN_RENDER_TOKEN`, `OPENAI_API_KEY`, `BLOB_READ_WRITE_TOKEN`, or `API_FOOTBALL_KEY` in frontend code, logs, or API responses.
