@@ -7,6 +7,7 @@ const { calculateMathematicalEliminations } = require('../src/services/mathemati
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 const {
+  getSweepstakeData,
   getEliminatedTeamsData,
   getEliminationsDebugData,
   getMathematicalEliminationsDebugData
@@ -20,6 +21,45 @@ const expectedAutomaticEliminations = new Map([
 
 function indexByCountry(rows) {
   return new Map((rows || []).map((row) => [row.country, row]));
+}
+
+function uniqueCountries(rows) {
+  return new Set((rows || []).map((row) => row.country));
+}
+
+function duplicateCountries(rows) {
+  const seen = new Set();
+  const duplicates = new Set();
+
+  (rows || []).forEach((row) => {
+    if (seen.has(row.country)) {
+      duplicates.add(row.country);
+      return;
+    }
+
+    seen.add(row.country);
+  });
+
+  return Array.from(duplicates);
+}
+
+function assertTeamStatusSummary(label, summary, eliminatedTeams) {
+  assert.ok(summary, `${label} teamStatusSummary missing`);
+  assert.equal(summary.totalTeams, 48, `${label} totalTeams should be 48`);
+  assert.equal(
+    summary.eliminatedTeams,
+    eliminatedTeams.length,
+    `${label} eliminatedTeams should match departure board length`
+  );
+  assert.equal(
+    summary.teamsInPlay,
+    summary.totalTeams - eliminatedTeams.length,
+    `${label} teamsInPlay formula mismatch`
+  );
+
+  if (eliminatedTeams.length === 4) {
+    assert.equal(summary.teamsInPlay, 44, `${label} should show 44 teams in play when 4 are eliminated`);
+  }
 }
 
 function teamsForGroups(groups) {
@@ -173,7 +213,8 @@ function currentFixtureHelp(mathDebug, country) {
 async function main() {
   runMockScenarioTests();
 
-  const [data, debug, mathDebug] = await Promise.all([
+  const [home, data, debug, mathDebug] = await Promise.all([
+    getSweepstakeData(),
     getEliminatedTeamsData(),
     getEliminationsDebugData(),
     getMathematicalEliminationsDebugData()
@@ -182,6 +223,40 @@ async function main() {
   const lounge = indexByCountry(data.loungeTeams);
   const active = indexByCountry(data.activeTeams);
   const atRisk = indexByCountry(data.atRiskTeams);
+  const pendingThirdPlace = indexByCountry(data.pendingThirdPlaceTeams);
+  const eliminatedTeams = data.departureBoard || [];
+  const eliminatedCountries = uniqueCountries(eliminatedTeams);
+  const duplicateEliminatedCountries = duplicateCountries(eliminatedTeams);
+  const inPlayRows = [
+    ...(data.activeTeams || []),
+    ...(data.atRiskTeams || []),
+    ...(data.pendingThirdPlaceTeams || [])
+  ];
+
+  assert.equal(sweepstakeTeams.length, 48, 'expected 48 local sweepstake teams');
+  assert.equal(
+    eliminatedTeams.length,
+    data.eliminationSummary.eliminatedCount,
+    'departureBoard length should match eliminationSummary.eliminatedCount'
+  );
+  assert.deepEqual(duplicateEliminatedCountries, [], 'duplicate eliminated countries found');
+  inPlayRows.forEach((team) => {
+    assert.equal(
+      eliminatedCountries.has(team.country),
+      false,
+      `${team.country} is eliminated but still counted as in play`
+    );
+  });
+  assertTeamStatusSummary('eliminated-teams', data.teamStatusSummary, eliminatedTeams);
+  assertTeamStatusSummary('sweepstake', home.teamStatusSummary, eliminatedTeams);
+  assertTeamStatusSummary('debug/eliminations', debug.teamStatusSummary, eliminatedTeams);
+  assert.deepEqual(home.teamStatusSummary, data.teamStatusSummary, 'homepage and eliminated team summaries differ');
+  assert.deepEqual(debug.teamStatusSummary, data.teamStatusSummary, 'debug and eliminated team summaries differ');
+  assert.equal(
+    data.teamStatusSummary.teamsInPlay,
+    data.teamStatusSummary.totalTeams - eliminatedTeams.length,
+    'teamsInPlay should be totalTeams minus eliminatedTeams length'
+  );
 
   expectedAutomaticEliminations.forEach((owner, country) => {
     const boardRow = assertTeamPresent(board, country, 'departureBoard');
@@ -191,6 +266,7 @@ async function main() {
     assert.equal(loungeRow.owner, owner, `${country} has wrong loungeTeams owner`);
     assert.equal(active.has(country), false, `${country} should not be active`);
     assert.equal(atRisk.has(country), false, `${country} should not be at_risk`);
+    assert.equal(pendingThirdPlace.has(country), false, `${country} should not be third_place_pending`);
     assert.equal(boardRow.source, 'automatic_mathematical', `${country} should be automatic, not manual-only`);
     assert.equal(boardRow.eliminationType, 'mathematical_group_stage', `${country} should be a group-stage mathematical elimination`);
     assert.equal(boardRow.proofType, 'cannot_finish_top_three', `${country} should prove it cannot finish top three`);
@@ -209,6 +285,11 @@ async function main() {
   console.log('elimination audit passed');
   console.log(JSON.stringify({
     eliminatedCount: data.eliminationSummary.eliminatedCount,
+    totalTeams: data.teamStatusSummary.totalTeams,
+    teamsInPlay: data.teamStatusSummary.teamsInPlay,
+    eliminatedTeams: data.teamStatusSummary.eliminatedTeams,
+    homepageTeamsInPlay: home.teamStatusSummary.teamsInPlay,
+    homepageTotalTeams: home.teamStatusSummary.totalTeams,
     mathematicalEliminationCount: data.eliminationSummary.mathematicalEliminationCount,
     manualOverrideCount: data.eliminationSummary.manualOverrideCount,
     expectedAutomaticEliminations: Array.from(expectedAutomaticEliminations.entries()).map(([country, owner]) => ({
