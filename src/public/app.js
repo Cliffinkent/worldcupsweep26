@@ -1,4 +1,6 @@
 const OWNER_STORAGE_KEY = 'sw26.owner';
+const BRACKET_VIEW_MODE_STORAGE_KEY = 'bracketViewMode';
+const BRACKET_COLLAPSE_STORAGE_KEY = 'bracketCollapseEmpty';
 const LIVE_FIXTURE_REFRESH_MS = 60 * 1000;
 
 const state = {
@@ -6,6 +8,9 @@ const state = {
   screen: 'leaderboard',
   openOwner: null,
   filterOwner: null,
+  bracketViewMode: 'compact',
+  bracketCollapseEmpty: false,
+  bracketExpandedMatches: new Set(),
   teamIndex: null,
   teamIndexFor: null,
   fixtureStats: null,
@@ -16,6 +21,20 @@ try {
   state.filterOwner = localStorage.getItem(OWNER_STORAGE_KEY) || null;
 } catch (error) {
   state.filterOwner = null;
+}
+
+try {
+  const storedViewMode = localStorage.getItem(BRACKET_VIEW_MODE_STORAGE_KEY);
+  const storedCollapseEmpty = localStorage.getItem(BRACKET_COLLAPSE_STORAGE_KEY);
+
+  if (['full', 'compact'].includes(storedViewMode)) {
+    state.bracketViewMode = storedViewMode;
+  }
+
+  state.bracketCollapseEmpty = storedCollapseEmpty === 'true';
+} catch (error) {
+  state.bracketViewMode = 'compact';
+  state.bracketCollapseEmpty = false;
 }
 
 const elements = {
@@ -784,22 +803,63 @@ function bracketSlotTeam(slot) {
   return slot?.team ? getFixtureTeam(slot.team) : null;
 }
 
+function bracketSlotLabel(slot, fallback) {
+  return slot?.placeholder || slot?.label || fallback || 'To be confirmed';
+}
+
+function compactBracketPathLabel(label) {
+  const text = String(label || 'TBC').trim();
+  const matchPath = text.match(/^(Winner|Loser) Match (\d+)$/i);
+
+  if (matchPath) {
+    return `${matchPath[1].slice(0, 1).toUpperCase()}${matchPath[2]}`;
+  }
+
+  const winnerGroup = text.match(/^Winner Group ([A-L])$/i);
+
+  if (winnerGroup) {
+    return `1${winnerGroup[1].toUpperCase()}`;
+  }
+
+  const runnerUpGroup = text.match(/^Runner-up Group ([A-L])$/i);
+
+  if (runnerUpGroup) {
+    return `2${runnerUpGroup[1].toUpperCase()}`;
+  }
+
+  const thirdPlaceGroup = text.match(/^Third-place Group ([A-L])$/i);
+
+  if (thirdPlaceGroup) {
+    return `3${thirdPlaceGroup[1].toUpperCase()}`;
+  }
+
+  if (/pending third-place mapping/i.test(text)) {
+    return 'Pending mapping';
+  }
+
+  return text;
+}
+
+function bracketEmptyPath(slotA, slotB, homePlaceholder, awayPlaceholder) {
+  const left = compactBracketPathLabel(bracketSlotLabel(slotA, homePlaceholder));
+  const right = compactBracketPathLabel(bracketSlotLabel(slotB, awayPlaceholder));
+  return `${left} vs ${right}`;
+}
+
 function bracketTieSide(slotOrName, placeholder) {
   const slot = normaliseBracketSlot(slotOrName, placeholder);
   const team = bracketSlotTeam(slot);
+  const label = bracketSlotLabel(slot, placeholder);
 
   if (!team) {
-    return `<div class="sw-tie__team sw-tie__team--tbc">${escapeHtml(slot.placeholder || slot.label || 'To be confirmed')}</div>`;
+    return `<div class="bracket-slot bracket-slot--placeholder sw-tie__team sw-tie__team--tbc" title="${escapeHtml(label)}">${escapeHtml(label)}</div>`;
   }
 
-  const projection = slot.projectionType === 'as_it_stands'
-    ? '<span class="sw-tie__tag">as it stands</span>'
-    : '';
   const unresolved = slot.unresolvedTie || team.unresolvedTie
     ? '<span class="sw-tie__tag sw-tie__tag--warn">Tie-break unresolved</span>'
     : '';
 
-  return `<div class="sw-tie__team">${renderFlag(team, 22)}<span class="sw-tie__main"><span class="sw-tie__line"><span class="sw-tie__name">${escapeHtml(team.country)}</span>${projection}</span><span class="sw-tie__owner">${escapeHtml(team.owner || '')}</span>${unresolved}</span></div>`;
+  return `<div class="bracket-slot bracket-slot--team sw-tie__team">${renderFlag(team, 22)}<span class="sw-tie__main"><span class="sw-tie__line"><span class="sw-tie__name" title="${escapeHtml(team.country)}">${escapeHtml(team.country)}</span></span><span class="sw-tie__owner">${escapeHtml(team.owner || '')}</span>${unresolved}</span></div>`;
 }
 
 const BRACKET_WINGS = {
@@ -816,6 +876,10 @@ const BRACKET_WINGS = {
     { round: 'Round of 32', matches: [76, 78, 79, 80, 86, 88, 85, 87] }
   ]
 };
+
+function bracketMatchKey(match) {
+  return String(match.matchNumber || match.id || `${match.homePlaceholder || ''}:${match.awayPlaceholder || ''}`);
+}
 
 function bracketMatch(match, side = '') {
   const slotA = match.slotA || {
@@ -835,8 +899,31 @@ function bracketMatch(match, side = '') {
     teamA?.owner === state.filterOwner || teamB?.owner === state.filterOwner
   );
   const number = match.matchNumber ? `<span class="sw-tie__number">M${match.matchNumber}</span>` : '';
+  const matchKey = bracketMatchKey(match);
+  const pathText = bracketEmptyPath(slotA, slotB, match.homePlaceholder, match.awayPlaceholder);
+  const collapsed = state.bracketCollapseEmpty && tbc && !state.bracketExpandedMatches.has(matchKey);
+  const sideClass = side ? ` sw-tie--${side}` : '';
+  const cardClasses = [
+    'bracket-card',
+    'sw-tie',
+    sideClass.trim(),
+    tbc ? 'bracket-card--empty sw-tie--tbc' : '',
+    mine ? 'sw-tie--mine' : ''
+  ].filter(Boolean).join(' ');
 
-  return `<div class="sw-tie${side ? ` sw-tie--${side}` : ''}${tbc ? ' sw-tie--tbc' : ''}${mine ? ' sw-tie--mine' : ''}">
+  if (collapsed) {
+    return `<button class="${cardClasses} bracket-card--collapsed" type="button" data-bracket-empty-toggle="${escapeHtml(matchKey)}" aria-expanded="false" aria-label="Expand match ${escapeHtml(match.matchNumber ? `M${match.matchNumber}` : pathText)}">
+      <span class="bracket-card__collapsed-number">${escapeHtml(match.matchNumber ? `M${match.matchNumber}` : 'Match')}</span>
+      <span class="bracket-card__collapsed-path">${escapeHtml(pathText)}</span>
+    </button>`;
+  }
+
+  const interactive = state.bracketCollapseEmpty && tbc;
+  const interactiveAttributes = interactive
+    ? ` role="button" tabindex="0" data-bracket-empty-toggle="${escapeHtml(matchKey)}" aria-expanded="true" aria-label="Collapse match ${escapeHtml(match.matchNumber ? `M${match.matchNumber}` : pathText)}"`
+    : '';
+
+  return `<div class="${cardClasses}${interactive ? ' bracket-card--expanded-empty' : ''}"${interactiveAttributes}>
     ${number}
     ${bracketTieSide(slotA, match.homePlaceholder)}
     ${bracketTieSide(slotB, match.awayPlaceholder)}
@@ -867,6 +954,39 @@ function bracketRoundColumn(stage, matchesByNumber, side) {
   </div>`;
 }
 
+function bracketProjectionNotice() {
+  switch (state.data?.projectionStatus) {
+    case 'confirmed':
+      return 'Bracket confirmed.';
+    case 'partial_group_data':
+      return 'Bracket projection shown as it stands. Some groups have played fewer matches.';
+    case 'no_group_data':
+      return 'Bracket projection shown as it stands. Slots will fill once group data is available.';
+    default:
+      return 'Bracket projection shown as it stands. Slots update after each match.';
+  }
+}
+
+function bracketToolbar() {
+  const full = state.bracketViewMode === 'full';
+  const compact = state.bracketViewMode === 'compact';
+  const collapse = state.bracketCollapseEmpty;
+
+  return `<div class="bracket-toolbar" role="toolbar" aria-label="Bracket view">
+    <button class="bracket-toolbar__button${full ? ' is-active' : ''}" type="button" data-bracket-view-mode="full" aria-pressed="${full ? 'true' : 'false'}">Full view</button>
+    <button class="bracket-toolbar__button${compact ? ' is-active' : ''}" type="button" data-bracket-view-mode="compact" aria-pressed="${compact ? 'true' : 'false'}">Compact view</button>
+    <button class="bracket-toolbar__button${collapse ? ' is-active' : ''}" type="button" data-bracket-collapse-toggle aria-pressed="${collapse ? 'true' : 'false'}">Collapse empty slots</button>
+  </div>`;
+}
+
+function bracketPageHead() {
+  return `<div class="bracket-page__head">
+    ${sectionHead('Knockout bracket', 'Official match path · slots fill as the group stage finishes')}
+    <p class="bracket-projection-notice">${escapeHtml(bracketProjectionNotice())}</p>
+    ${bracketToolbar()}
+  </div>`;
+}
+
 function screenBracket() {
   const rounds = state.data.bracket || [];
   const matchesByNumber = buildBracketIndex(rounds);
@@ -886,7 +1006,14 @@ function screenBracket() {
     ${thirdPlaceMatch ? bracketMatch(thirdPlaceMatch, 'final') : ''}
   </div>`;
 
-  return `${sectionHead('Knockout bracket', 'Official match path · slots fill as the group stage finishes')}<div class="sw-bracket"><div class="sw-bracket__wing">${left}</div>${centre}<div class="sw-bracket__wing sw-bracket__wing--right">${right}</div></div>`;
+  const boardClasses = [
+    'bracket-board',
+    'sw-bracket',
+    state.bracketViewMode === 'compact' ? 'bracket-board--compact' : 'bracket-board--full',
+    state.bracketCollapseEmpty ? 'bracket-board--collapse-empty' : ''
+  ].filter(Boolean).join(' ');
+
+  return `<section class="bracket-page">${bracketPageHead()}<div class="${boardClasses}"><div class="sw-bracket__wing">${left}</div>${centre}<div class="sw-bracket__wing sw-bracket__wing--right">${right}</div></div></section>`;
 }
 
 const SCREENS = {
@@ -942,6 +1069,53 @@ function renderScreen(options = {}) {
   elements.tabs.querySelectorAll('.tab').forEach((button) => {
     button.classList.toggle('tab--on', button.dataset.screen === state.screen);
   });
+}
+
+function persistBracketPreference(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (error) {
+    /* localStorage unavailable - bracket controls still work for the session */
+  }
+}
+
+function setBracketViewMode(mode) {
+  if (!['full', 'compact'].includes(mode) || state.bracketViewMode === mode) {
+    return;
+  }
+
+  state.bracketViewMode = mode;
+  persistBracketPreference(BRACKET_VIEW_MODE_STORAGE_KEY, mode);
+  renderScreen({ preserveScroll: true });
+}
+
+function setBracketCollapseEmpty(collapse) {
+  if (state.bracketCollapseEmpty === collapse) {
+    return;
+  }
+
+  state.bracketCollapseEmpty = collapse;
+
+  if (!collapse) {
+    state.bracketExpandedMatches.clear();
+  }
+
+  persistBracketPreference(BRACKET_COLLAPSE_STORAGE_KEY, collapse ? 'true' : 'false');
+  renderScreen({ preserveScroll: true });
+}
+
+function toggleBracketEmptyMatch(matchKey) {
+  if (!matchKey) {
+    return;
+  }
+
+  if (state.bracketExpandedMatches.has(matchKey)) {
+    state.bracketExpandedMatches.delete(matchKey);
+  } else {
+    state.bracketExpandedMatches.add(matchKey);
+  }
+
+  renderScreen({ preserveScroll: true });
 }
 
 function shouldAutoRefreshFixtures() {
@@ -1051,6 +1225,27 @@ elements.tabs.addEventListener('click', (event) => {
 });
 
 elements.screen.addEventListener('click', (event) => {
+  const viewModeButton = event.target.closest('[data-bracket-view-mode]');
+
+  if (viewModeButton) {
+    setBracketViewMode(viewModeButton.dataset.bracketViewMode);
+    return;
+  }
+
+  const collapseButton = event.target.closest('[data-bracket-collapse-toggle]');
+
+  if (collapseButton) {
+    setBracketCollapseEmpty(!state.bracketCollapseEmpty);
+    return;
+  }
+
+  const bracketEmptyToggle = event.target.closest('[data-bracket-empty-toggle]');
+
+  if (bracketEmptyToggle) {
+    toggleBracketEmptyMatch(bracketEmptyToggle.dataset.bracketEmptyToggle);
+    return;
+  }
+
   const jumpButton = event.target.closest('#fixture-jump-button');
 
   if (jumpButton) {
@@ -1078,6 +1273,21 @@ elements.screen.addEventListener('click', (event) => {
   } else {
     state.openOwner = null;
   }
+});
+
+elements.screen.addEventListener('keydown', (event) => {
+  if (!['Enter', ' '].includes(event.key)) {
+    return;
+  }
+
+  const bracketEmptyToggle = event.target.closest('[data-bracket-empty-toggle]');
+
+  if (!bracketEmptyToggle || bracketEmptyToggle.tagName === 'BUTTON') {
+    return;
+  }
+
+  event.preventDefault();
+  toggleBracketEmptyMatch(bracketEmptyToggle.dataset.bracketEmptyToggle);
 });
 
 elements.ownerFilter.addEventListener('change', (event) => {
