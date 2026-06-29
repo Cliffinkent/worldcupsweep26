@@ -926,7 +926,6 @@ function bracketTieSide(slotOrName, placeholder, { score = null, showScore = fal
     'bracket-slot',
     'bracket-slot--team',
     'sw-tie__team',
-    showScore ? 'sw-tie__team--scored' : '',
     slot.isWinner ? 'bracket-slot--winner' : '',
     slot.isLoser ? 'bracket-slot--loser' : '',
     slot.isEliminated ? 'bracket-slot--eliminated' : '',
@@ -938,7 +937,7 @@ function bracketTieSide(slotOrName, placeholder, { score = null, showScore = fal
       ? ', advanced'
       : '';
 
-  return `<div class="${slotClasses}" aria-label="${escapeHtml(`${team.country}${team.owner ? `, ${team.owner}` : ''}${stateText}${scoreLabel}`)}">${renderFlag(team, 22)}<span class="sw-tie__main"><span class="sw-tie__line"><span class="sw-tie__name" title="${escapeHtml(team.country)}">${escapeHtml(team.country)}</span></span><span class="sw-tie__owner">${escapeHtml(team.owner || '')}</span>${unresolved}${resultTag}</span>${scoreHtml}</div>`;
+  return `<div class="${slotClasses}" aria-label="${escapeHtml(`${team.country}${team.owner ? `, ${team.owner}` : ''}${stateText}${scoreLabel}`)}">${renderFlag(team, 22)}<span class="sw-tie__main"><span class="sw-tie__line"><span class="sw-tie__name" title="${escapeHtml(team.country)}">${escapeHtml(team.country)}</span>${scoreHtml}</span><span class="sw-tie__owner">${escapeHtml(team.owner || '')}</span>${unresolved}${resultTag}</span></div>`;
 }
 
 const BRACKET_WINGS = {
