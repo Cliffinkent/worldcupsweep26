@@ -6,6 +6,7 @@ const {
   getGroupsData,
   getFixturesData,
   getBracketData,
+  getBracketAuditDebugData,
   getThirdPlaceWatchData,
   getThirdPlaceWatchDebugData,
   getEliminatedTeamsData,
@@ -277,6 +278,10 @@ router.get('/debug/table-source', asyncHandler(async (req, res) => {
 
 router.get('/debug/qualification', asyncHandler(async (req, res) => {
   res.json(await getQualificationDebugData());
+}));
+
+router.get('/debug/bracket-audit', asyncHandler(async (req, res) => {
+  res.json(await getBracketAuditDebugData());
 }));
 
 router.get('/debug/live-fixtures', asyncHandler(async (req, res) => {

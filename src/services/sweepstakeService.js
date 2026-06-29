@@ -528,6 +528,18 @@ async function getBracketData() {
   };
 }
 
+async function getBracketAuditDebugData() {
+  const bracketData = await getBracketData();
+
+  return {
+    generatedAt: bracketData.generatedAt,
+    lastUpdated: bracketData.lastUpdated,
+    providerStatus: bracketData.providerStatus,
+    groupTableSource: bracketData.groupTableSource,
+    ...bracketData.bracketAudit
+  };
+}
+
 async function getThirdPlaceWatchData() {
   const [rawFixtures, standings] = await Promise.all([
     getWorldCupFixtures(),
@@ -738,6 +750,7 @@ module.exports = {
   getGroupsData,
   getFixturesData,
   getBracketData,
+  getBracketAuditDebugData,
   getThirdPlaceWatchData,
   getThirdPlaceWatchDebugData,
   getEliminatedTeamsData,

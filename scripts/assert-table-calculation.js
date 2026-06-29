@@ -12,7 +12,9 @@ function rawFixture({
   home = 'France',
   away = 'Iraq',
   homeScore = null,
-  awayScore = null
+  awayScore = null,
+  homePenaltyScore = null,
+  awayPenaltyScore = null
 }) {
   return {
     fixture: {
@@ -41,6 +43,12 @@ function rawFixture({
     goals: {
       home: homeScore,
       away: awayScore
+    },
+    score: {
+      penalty: {
+        home: homePenaltyScore,
+        away: awayPenaltyScore
+      }
     }
   };
 }
@@ -187,6 +195,17 @@ const postponedFixture = normaliseFixture(rawFixture({
   short: 'PST',
   long: 'Match Postponed'
 }));
+const penaltyFixture = normaliseFixture(rawFixture({
+  id: 104,
+  short: 'PEN',
+  long: 'Match Finished After Penalties',
+  home: 'Germany',
+  away: 'Paraguay',
+  homeScore: 1,
+  awayScore: 1,
+  homePenaltyScore: 4,
+  awayPenaltyScore: 5
+}));
 
 assert.deepEqual({
   rawStatus: suspendedFixture.rawStatus,
@@ -234,6 +253,24 @@ assert.deepEqual({
   homeScore: null,
   awayScore: null,
   isLiveSectionEligible: false
+});
+
+assert.deepEqual({
+  rawStatus: penaltyFixture.rawStatus,
+  status: penaltyFixture.status,
+  homeScore: penaltyFixture.homeScore,
+  awayScore: penaltyFixture.awayScore,
+  homePenaltyScore: penaltyFixture.homePenaltyScore,
+  awayPenaltyScore: penaltyFixture.awayPenaltyScore,
+  winner: penaltyFixture.winner
+}, {
+  rawStatus: 'PEN',
+  status: 'finished',
+  homeScore: 1,
+  awayScore: 1,
+  homePenaltyScore: 4,
+  awayPenaltyScore: 5,
+  winner: 'Paraguay'
 });
 
 const statusRegression = calculateGroupTablesWithDiagnostics(sweepstakeTeams, [

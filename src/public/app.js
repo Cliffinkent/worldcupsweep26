@@ -795,7 +795,12 @@ function normaliseBracketSlot(slotOrName, placeholder) {
     placeholder: placeholder || 'To be confirmed',
     team: slotOrName ? getFixtureTeam(slotOrName) : null,
     projectionType: null,
-    unresolvedTie: false
+    resultState: slotOrName ? 'projected' : 'placeholder',
+    unresolvedTie: false,
+    isWinner: false,
+    isLoser: false,
+    isEliminated: false,
+    resolvedFromMatch: null
   };
 }
 
@@ -858,8 +863,27 @@ function bracketTieSide(slotOrName, placeholder) {
   const unresolved = slot.unresolvedTie || team.unresolvedTie
     ? '<span class="sw-tie__tag sw-tie__tag--warn">Tie-break unresolved</span>'
     : '';
+  const resultTag = slot.isEliminated
+    ? '<span class="sw-tie__tag sw-tie__tag--lost">Eliminated</span>'
+    : slot.resultState === 'confirmed_winner'
+      ? '<span class="sw-tie__tag sw-tie__tag--advanced">Advanced</span>'
+      : '';
+  const slotClasses = [
+    'bracket-slot',
+    'bracket-slot--team',
+    'sw-tie__team',
+    slot.isWinner ? 'bracket-slot--winner' : '',
+    slot.isLoser ? 'bracket-slot--loser' : '',
+    slot.isEliminated ? 'bracket-slot--eliminated' : '',
+    slot.resultState === 'confirmed_winner' ? 'bracket-slot--advanced' : ''
+  ].filter(Boolean).join(' ');
+  const stateText = slot.isEliminated
+    ? ', eliminated'
+    : slot.resultState === 'confirmed_winner'
+      ? ', advanced'
+      : '';
 
-  return `<div class="bracket-slot bracket-slot--team sw-tie__team">${renderFlag(team, 22)}<span class="sw-tie__main"><span class="sw-tie__line"><span class="sw-tie__name" title="${escapeHtml(team.country)}">${escapeHtml(team.country)}</span></span><span class="sw-tie__owner">${escapeHtml(team.owner || '')}</span>${unresolved}</span></div>`;
+  return `<div class="${slotClasses}" aria-label="${escapeHtml(`${team.country}${team.owner ? `, ${team.owner}` : ''}${stateText}`)}">${renderFlag(team, 22)}<span class="sw-tie__main"><span class="sw-tie__line"><span class="sw-tie__name" title="${escapeHtml(team.country)}">${escapeHtml(team.country)}</span></span><span class="sw-tie__owner">${escapeHtml(team.owner || '')}</span>${unresolved}${resultTag}</span></div>`;
 }
 
 const BRACKET_WINGS = {

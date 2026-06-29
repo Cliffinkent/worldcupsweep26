@@ -399,10 +399,15 @@ function findLocalTeam(apiName) {
 }
 
 function normaliseScore(value) {
-  return Number.isFinite(value) ? value : null;
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  const score = Number(value);
+  return Number.isFinite(score) ? score : null;
 }
 
-function normaliseWinner(rawFixture, status, homeTeam, awayTeam, homeScore, awayScore) {
+function normaliseProviderWinner(rawFixture, homeTeam, awayTeam) {
   if (rawFixture?.teams?.home?.winner === true) {
     return homeTeam;
   }
@@ -411,12 +416,46 @@ function normaliseWinner(rawFixture, status, homeTeam, awayTeam, homeScore, away
     return awayTeam;
   }
 
+  return null;
+}
+
+function normaliseWinner(
+  rawFixture,
+  status,
+  rawStatus,
+  homeTeam,
+  awayTeam,
+  homeScore,
+  awayScore,
+  homePenaltyScore,
+  awayPenaltyScore
+) {
+  const providerWinner = normaliseProviderWinner(rawFixture, homeTeam, awayTeam);
+
+  if (providerWinner) {
+    return providerWinner;
+  }
+
   if (status === 'finished' && Number.isFinite(homeScore) && Number.isFinite(awayScore)) {
     if (homeScore > awayScore) {
       return homeTeam;
     }
 
     if (awayScore > homeScore) {
+      return awayTeam;
+    }
+  }
+
+  if (
+    rawStatus === 'PEN' &&
+    Number.isFinite(homePenaltyScore) &&
+    Number.isFinite(awayPenaltyScore)
+  ) {
+    if (homePenaltyScore > awayPenaltyScore) {
+      return homeTeam;
+    }
+
+    if (awayPenaltyScore > homePenaltyScore) {
       return awayTeam;
     }
   }
@@ -434,6 +473,8 @@ function normaliseFixture(rawFixture) {
   const localAwayTeam = findLocalTeam(awayTeam);
   const homeScore = normaliseScore(rawFixture?.goals?.home);
   const awayScore = normaliseScore(rawFixture?.goals?.away);
+  const homePenaltyScore = normaliseScore(rawFixture?.score?.penalty?.home);
+  const awayPenaltyScore = normaliseScore(rawFixture?.score?.penalty?.away);
   const utcDate = rawFixture?.fixture?.date || null;
   const localDate = utcDate ? new Date(utcDate).toISOString() : null;
   const date = utcDate ? utcDate.slice(0, 10) : null;
@@ -459,7 +500,20 @@ function normaliseFixture(rawFixture) {
     awayTeam,
     homeScore,
     awayScore,
-    winner: normaliseWinner(rawFixture, status, homeTeam, awayTeam, homeScore, awayScore),
+    homePenaltyScore,
+    awayPenaltyScore,
+    providerWinner: normaliseProviderWinner(rawFixture, homeTeam, awayTeam),
+    winner: normaliseWinner(
+      rawFixture,
+      status,
+      rawStatus,
+      homeTeam,
+      awayTeam,
+      homeScore,
+      awayScore,
+      homePenaltyScore,
+      awayPenaltyScore
+    ),
     elapsed: Number.isFinite(rawProviderStatus.elapsed) ? rawProviderStatus.elapsed : null,
     rawStatus,
     isLiveSectionEligible: isLiveSectionEligible(status, rawStatus)
