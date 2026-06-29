@@ -1100,6 +1100,35 @@ button {
   color: var(--muted);
 }
 .sw-tie__tag--warn { color: var(--magenta); }
+.sw-tie__tag--advanced { color: var(--alive); }
+.sw-tie__tag--lost { color: var(--error); }
+
+.bracket-slot--advanced {
+  background: var(--alive-tint);
+}
+
+.bracket-slot--winner {
+  box-shadow: inset 3px 0 0 var(--alive);
+}
+
+.bracket-slot--loser,
+.bracket-slot--eliminated {
+  background: var(--error-tint);
+}
+
+.bracket-slot--eliminated .sw-tie__name {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.bracket-slot--eliminated .sw-tie__main {
+  opacity: 0.72;
+}
+
+.bracket-slot--eliminated .flag,
+.bracket-slot--eliminated .sw-tie__owner {
+  opacity: 1;
+}
 
 .sw-tie--mine { border-color: var(--magenta); box-shadow: inset 3px 0 0 var(--magenta); }
 .sw-tie--tbc { border-style: dashed; }

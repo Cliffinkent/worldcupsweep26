@@ -23,6 +23,15 @@ const THIRD_PLACE_STATS = {
   K: { points: 0, goalDifference: -4, goalsFor: 0 },
   L: { points: 0, goalDifference: -4, goalsFor: 0 }
 };
+const KNOCKOUT_GROUP_ORDERS = {
+  A: ['mexico', 'south-africa', 'czechia', 'south-korea'],
+  B: ['switzerland', 'canada', 'bosnia-and-herzegovina', 'qatar'],
+  C: ['brazil', 'morocco', 'haiti', 'scotland'],
+  D: ['united-states', 'australia', 'paraguay', 'turkiye'],
+  E: ['germany', 'curacao', 'cote-divoire', 'ecuador'],
+  F: ['netherlands', 'japan', 'sweden', 'tunisia']
+};
+const teamsById = new Map(sweepstakeTeams.map((team) => [team.id, team]));
 
 function teamsForGroup(group) {
   return sweepstakeTeams.filter((team) => team.group === group);
@@ -63,6 +72,56 @@ function groupTable(group) {
       teamRow(order[2], thirdStats, 3),
       teamRow(order[3], { points: 0, goalDifference: -8, goalsFor: 1 }, 4)
     ]
+  };
+}
+
+function orderedGroupTable(group, orderedTeamIds) {
+  const order = orderedTeamIds.map((teamId) => teamsById.get(teamId));
+  const thirdStats = THIRD_PLACE_STATS[group];
+
+  return {
+    group,
+    table: [
+      teamRow(order[0], { points: 12, goalDifference: 8, goalsFor: 10 }, 1),
+      teamRow(order[1], { points: 10, goalDifference: 4, goalsFor: 7 }, 2),
+      teamRow(order[2], thirdStats, 3),
+      teamRow(order[3], { points: 0, goalDifference: -8, goalsFor: 1 }, 4)
+    ]
+  };
+}
+
+function knockoutGroupTable(group) {
+  const orderedTeamIds = KNOCKOUT_GROUP_ORDERS[group] || teamsForGroup(group).map((team) => team.id);
+  return orderedGroupTable(group, orderedTeamIds);
+}
+
+function knockoutFixture({
+  id,
+  matchNumber = null,
+  round = 'Round of 32',
+  status = 'finished',
+  rawStatus = 'FT',
+  homeTeam,
+  awayTeam,
+  homeScore,
+  awayScore,
+  homePenaltyScore = null,
+  awayPenaltyScore = null,
+  winner = null
+}) {
+  return {
+    id,
+    matchNumber,
+    round,
+    status,
+    rawStatus,
+    homeTeam,
+    awayTeam,
+    homeScore,
+    awayScore,
+    homePenaltyScore,
+    awayPenaltyScore,
+    winner
   };
 }
 
@@ -196,6 +255,114 @@ assert.equal(missingMappingWatch.groupings.every((grouping) => grouping.annexeCM
 assert.equal(missingMappingWatch.groupings.every((grouping) => grouping.annexeCMappedTeam === null), true);
 assert.equal(
   missingMappingWatch.groupings.every((grouping) => grouping.rows.every((row) => row.isAnnexeCMappedTeam === false)),
+  true
+);
+
+const knockoutGroupTables = 'ABCDEFGHIJKL'.split('').map(knockoutGroupTable);
+const knockoutAnnexCMap = {
+  [QUALIFYING_THIRD_PLACE_GROUPS]: {
+    ...thirdPlaceAnnexC[QUALIFYING_THIRD_PLACE_GROUPS],
+    '1E': '3D'
+  }
+};
+const knockoutProjection = buildBracketProjection({
+  groupTables: knockoutGroupTables,
+  fixtures: [
+    knockoutFixture({
+      id: 'ko-73',
+      matchNumber: 73,
+      homeTeam: 'South Africa',
+      awayTeam: 'Canada',
+      homeScore: 2,
+      awayScore: 1
+    }),
+    knockoutFixture({
+      id: 'ko-75',
+      matchNumber: 75,
+      status: 'scheduled',
+      rawStatus: 'NS',
+      homeTeam: 'Netherlands',
+      awayTeam: 'Morocco',
+      homeScore: null,
+      awayScore: null
+    }),
+    knockoutFixture({
+      id: 'ko-74',
+      matchNumber: 74,
+      rawStatus: 'PEN',
+      homeTeam: 'Germany',
+      awayTeam: 'Paraguay',
+      homeScore: 1,
+      awayScore: 1,
+      homePenaltyScore: 4,
+      awayPenaltyScore: 5
+    }),
+    knockoutFixture({
+      id: 'ko-unmapped',
+      round: 'Round of 16',
+      homeTeam: 'Canada',
+      awayTeam: 'Morocco',
+      homeScore: 1,
+      awayScore: 0
+    })
+  ],
+  rounds: ['Round of 32', 'Round of 16'],
+  providerStatus: { providerStatus: 'test' },
+  generatedAt: '2026-06-20T00:00:00.000Z',
+  annexCMap: knockoutAnnexCMap
+});
+const knockoutM73 = knockoutProjection.roundOf32.find((match) => match.matchNumber === 73);
+const knockoutM74 = knockoutProjection.roundOf32.find((match) => match.matchNumber === 74);
+const knockoutM89 = knockoutProjection.bracket
+  .flatMap((round) => round.matches)
+  .find((match) => match.matchNumber === 89);
+const knockoutM90 = knockoutProjection.bracket
+  .flatMap((round) => round.matches)
+  .find((match) => match.matchNumber === 90);
+const downstreamW73 = [knockoutM89.slotA, knockoutM89.slotB].find((slot) => slot.source === 'W73');
+const downstreamW75 = [knockoutM89.slotA, knockoutM89.slotB].find((slot) => slot.source === 'W75');
+const downstreamW74 = [knockoutM90.slotA, knockoutM90.slotB].find((slot) => slot.source === 'W74');
+
+assert.equal(knockoutM73.slotA.team.country, 'South Africa');
+assert.equal(knockoutM73.slotA.isWinner, true);
+assert.equal(knockoutM73.slotA.resultState, 'confirmed_winner');
+assert.equal(knockoutM73.slotB.team.country, 'Canada');
+assert.equal(knockoutM73.slotB.isLoser, true);
+assert.equal(knockoutM73.slotB.isEliminated, true);
+assert.equal(knockoutM73.slotB.resultState, 'confirmed_loser');
+assert.equal(downstreamW73.team.country, 'South Africa');
+assert.equal(downstreamW73.resolvedFromMatch, 73);
+assert.equal(downstreamW75.team, null);
+assert.equal(downstreamW75.resultState, 'placeholder');
+
+assert.equal(knockoutM74.slotA.team.country, 'Germany');
+assert.equal(knockoutM74.slotA.isLoser, true);
+assert.equal(knockoutM74.slotA.isEliminated, true);
+assert.equal(knockoutM74.slotB.team.country, 'Paraguay');
+assert.equal(knockoutM74.slotB.isWinner, true);
+assert.equal(downstreamW74.team.country, 'Paraguay');
+
+assert.equal(knockoutProjection.bracketAudit.resolvedWinnerSources.W73, 'South Africa');
+assert.equal(knockoutProjection.bracketAudit.resolvedLoserSources.L73, 'Canada');
+assert.equal(knockoutProjection.bracketAudit.resolvedWinnerSources.W74, 'Paraguay');
+assert.equal(
+  knockoutProjection.bracketAudit.mappedKnockoutResults
+    .some((result) => result.fixtureId === 'ko-73' && result.matchNumber === 73 && result.winner === 'South Africa' && result.mapped),
+  true
+);
+assert.equal(
+  knockoutProjection.bracketAudit.mappedKnockoutResults
+    .some((result) => result.fixtureId === 'ko-74' && result.resultReason === 'penalties' && result.winner === 'Paraguay'),
+  true
+);
+assert.equal(
+  knockoutProjection.bracketAudit.unresolvedKnockoutFixtures
+    .some((fixture) => fixture.fixtureId === 'ko-unmapped' && fixture.reason === 'finished_knockout_fixture_not_mapped'),
+  true
+);
+assert.equal(
+  knockoutProjection.bracketAudit.downstreamSlotChecks
+    .some((check) => check.source === 'W73' && check.expectedCountry === 'South Africa' && check.actualCountry === 'South Africa' && check.passed),
   true
 );
 
