@@ -506,7 +506,7 @@ function markResultSlot(slot, team, matchNumber, isWinner) {
   });
 }
 
-function applyKnockoutResult(match, result) {
+function applyKnockoutResult(match, result, fixture = null) {
   const homeSlotKey = slotKeyForTeam(match, result.homeTeam);
   const awaySlotKey = slotKeyForTeam(match, result.awayTeam);
   const teamsBySlot = {};
@@ -536,6 +536,13 @@ function applyKnockoutResult(match, result) {
 
   match.winner = teamCountry(result.winnerTeam);
   match.status = 'finished';
+  if (fixture) {
+    match.fixture = {
+      ...fixture,
+      status: 'finished',
+      winner: teamCountry(result.winnerTeam)
+    };
+  }
   syncMatchLegacyFields(match);
 }
 
@@ -726,7 +733,7 @@ function resolveBracketResults({ roundOf32 = [], laterRounds = [], fixtures = []
         continue;
       }
 
-      applyKnockoutResult(mapping.match, result);
+      applyKnockoutResult(mapping.match, result, item.fixture);
       winnerSourceTeams.set(`W${mapping.match.matchNumber}`, cloneTeam(result.winnerTeam));
       loserSourceTeams.set(`L${mapping.match.matchNumber}`, cloneTeam(result.loserTeam));
     }

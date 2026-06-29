@@ -476,13 +476,37 @@ function applyGroupStageEliminations({
     });
 }
 
+function getTeamName(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  return value.country || value.name || value.team || null;
+}
+
+function getSlotTeamName(slot) {
+  return getTeamName(slot?.team || slot);
+}
+
+function getConfirmedWinnerName(match) {
+  const winnerSlot = [match.slotA, match.slotB].find((slot) => (
+    slot?.isWinner || slot?.resultState === 'confirmed_winner'
+  ));
+
+  return getSlotTeamName(winnerSlot);
+}
+
 function getFixtureTeamNames(match) {
   const fixture = match.fixture || match;
 
   return {
-    homeTeam: fixture.homeTeam || match.homeTeam || null,
-    awayTeam: fixture.awayTeam || match.awayTeam || null,
-    winner: fixture.winner || match.winner || null,
+    homeTeam: getTeamName(fixture.homeTeam) || getTeamName(match.homeTeam) || getSlotTeamName(match.slotA),
+    awayTeam: getTeamName(fixture.awayTeam) || getTeamName(match.awayTeam) || getSlotTeamName(match.slotB),
+    winner: getTeamName(fixture.winner) || getTeamName(match.winner) || getConfirmedWinnerName(match),
     eliminatedAt: fixture.utcDate || fixture.localDate || fixture.date || null
   };
 }
