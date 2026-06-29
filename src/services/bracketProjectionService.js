@@ -252,16 +252,19 @@ function buildRoundOf32(qualification, fixturesByRound, providerRounds, annexCMa
   const roundFixtures = fixturesByRound['Round of 32'] || [];
 
   return roundOf32Slots.map((match) => {
-    const fixture = fixtureForMatchNumber(roundFixtures, match.matchNumber);
     const slotA = projectSlot(match.slotA, qualification, annexCMapping);
     const slotB = projectSlot(match.slotB, qualification, annexCMapping);
-
-    return syncMatchLegacyFields({
+    const bracketMatch = {
       matchNumber: match.matchNumber,
       round: match.round,
-      providerRoundAvailable: providerRounds.includes(match.round),
       slotA,
-      slotB,
+      slotB
+    };
+    const fixture = fixtureForBracketMatch(bracketMatch, roundFixtures);
+
+    return syncMatchLegacyFields({
+      ...bracketMatch,
+      providerRoundAvailable: providerRounds.includes(match.round),
       fixture,
       status: fixture?.status || 'scheduled',
       winner: fixture?.winner || null
@@ -285,15 +288,18 @@ function buildLaterRounds(fixturesByRound, providerRounds) {
       round: round.round,
       providerRoundAvailable: providerRounds.includes(round.round),
       matches: round.slots.map((slot) => {
-        const fixture = fixtureForMatchNumber(fixturesByRound[round.round] || [], slot.matchNumber);
-
-        return syncMatchLegacyFields({
+        const bracketMatch = {
           ...slot,
           round: round.round,
+          slotA: pointerSlot(slot.homePlaceholder),
+          slotB: pointerSlot(slot.awayPlaceholder)
+        };
+        const fixture = fixtureForBracketMatch(bracketMatch, fixturesByRound[round.round] || []);
+
+        return syncMatchLegacyFields({
+          ...bracketMatch,
           providerRoundAvailable: providerRounds.includes(round.round),
           fixture,
-          slotA: pointerSlot(slot.homePlaceholder),
-          slotB: pointerSlot(slot.awayPlaceholder),
           status: fixture?.status || 'scheduled',
           winner: fixture?.winner || null
         });
@@ -324,6 +330,44 @@ function matchNumberFromFixture(fixture) {
 
 function fixtureForMatchNumber(fixtures, matchNumber) {
   return fixtures.find((fixture) => matchNumberFromFixture(fixture) === matchNumber) || null;
+}
+
+function fixtureForBracketMatch(match, fixtures) {
+  const byNumber = fixtureForMatchNumber(fixtures, match.matchNumber);
+
+  if (byNumber) {
+    return byNumber;
+  }
+
+  const pairMatches = fixtures.filter((fixture) => matchContainsFixturePair(match, fixture));
+
+  if (pairMatches.length === 1) {
+    return pairMatches[0];
+  }
+
+  return null;
+}
+
+function attachProviderFixturesToMatches(matches, fixtures = []) {
+  const fixturesByRound = groupFixturesByRound(fixtures);
+
+  matches.forEach((match) => {
+    const fixture = fixtureForBracketMatch(match, fixturesByRound[match.round] || []);
+
+    if (!fixture) {
+      return;
+    }
+
+    match.fixture = fixture;
+
+    if (fixture.status) {
+      match.status = fixture.status;
+    }
+
+    if (fixture.winner && fixture.status === 'finished') {
+      match.winner = fixture.winner;
+    }
+  });
 }
 
 function isFinishedKnockoutFixture(fixture) {
@@ -754,6 +798,7 @@ function resolveBracketResults({ roundOf32 = [], laterRounds = [], fixtures = []
   });
 
   matches.forEach(syncMatchLegacyFields);
+  attachProviderFixturesToMatches(matches, fixtures);
 
   return {
     roundOf32,
