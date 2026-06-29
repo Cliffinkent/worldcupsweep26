@@ -804,6 +804,54 @@ function normaliseBracketSlot(slotOrName, placeholder) {
   };
 }
 
+function bracketMatchFixture(match) {
+  return match?.fixture || null;
+}
+
+function bracketMatchHasScore(fixture) {
+  return Boolean(fixture)
+    && fixture.homeScore !== null && fixture.homeScore !== undefined
+    && fixture.awayScore !== null && fixture.awayScore !== undefined;
+}
+
+function isBracketMatchLive(match) {
+  const fixture = bracketMatchFixture(match);
+
+  if (fixture?.isLiveSectionEligible === true || fixture?.status === 'live') {
+    return true;
+  }
+
+  return normaliseFixtureStatus(match?.status) === 'live';
+}
+
+function bracketMatchShowsScore(match) {
+  const fixture = bracketMatchFixture(match);
+
+  if (!bracketMatchHasScore(fixture)) {
+    return false;
+  }
+
+  const status = normaliseFixtureStatus(fixture?.status || match?.status);
+  return status === 'live' || status === 'finished';
+}
+
+function bracketLiveLabel(match) {
+  const fixture = bracketMatchFixture(match);
+  const statusDetail = fixture?.statusDetail || 'Live';
+
+  if (Number.isFinite(fixture?.elapsed)) {
+    return `${statusDetail} ${fixture.elapsed}'`;
+  }
+
+  return statusDetail;
+}
+
+function hasLiveBracketMatches() {
+  return (state.data?.bracket || []).some((round) => (
+    (round.matches || []).some(isBracketMatchLive)
+  ));
+}
+
 function bracketSlotTeam(slot) {
   return slot?.team ? getFixtureTeam(slot.team) : null;
 }
@@ -851,10 +899,16 @@ function bracketEmptyPath(slotA, slotB, homePlaceholder, awayPlaceholder) {
   return `${left} vs ${right}`;
 }
 
-function bracketTieSide(slotOrName, placeholder) {
+function bracketTieSide(slotOrName, placeholder, { score = null, showScore = false } = {}) {
   const slot = normaliseBracketSlot(slotOrName, placeholder);
   const team = bracketSlotTeam(slot);
   const label = bracketSlotLabel(slot, placeholder);
+  const scoreHtml = showScore && score !== null && score !== undefined
+    ? `<span class="sw-tie__score" aria-hidden="true">${score}</span>`
+    : '';
+  const scoreLabel = showScore && score !== null && score !== undefined
+    ? `, score ${score}`
+    : '';
 
   if (!team) {
     return `<div class="bracket-slot bracket-slot--placeholder sw-tie__team sw-tie__team--tbc" title="${escapeHtml(label)}">${escapeHtml(label)}</div>`;
@@ -872,6 +926,7 @@ function bracketTieSide(slotOrName, placeholder) {
     'bracket-slot',
     'bracket-slot--team',
     'sw-tie__team',
+    showScore ? 'sw-tie__team--scored' : '',
     slot.isWinner ? 'bracket-slot--winner' : '',
     slot.isLoser ? 'bracket-slot--loser' : '',
     slot.isEliminated ? 'bracket-slot--eliminated' : '',
@@ -883,7 +938,7 @@ function bracketTieSide(slotOrName, placeholder) {
       ? ', advanced'
       : '';
 
-  return `<div class="${slotClasses}" aria-label="${escapeHtml(`${team.country}${team.owner ? `, ${team.owner}` : ''}${stateText}`)}">${renderFlag(team, 22)}<span class="sw-tie__main"><span class="sw-tie__line"><span class="sw-tie__name" title="${escapeHtml(team.country)}">${escapeHtml(team.country)}</span></span><span class="sw-tie__owner">${escapeHtml(team.owner || '')}</span>${unresolved}${resultTag}</span></div>`;
+  return `<div class="${slotClasses}" aria-label="${escapeHtml(`${team.country}${team.owner ? `, ${team.owner}` : ''}${stateText}${scoreLabel}`)}">${renderFlag(team, 22)}<span class="sw-tie__main"><span class="sw-tie__line"><span class="sw-tie__name" title="${escapeHtml(team.country)}">${escapeHtml(team.country)}</span></span><span class="sw-tie__owner">${escapeHtml(team.owner || '')}</span>${unresolved}${resultTag}</span>${scoreHtml}</div>`;
 }
 
 const BRACKET_WINGS = {
@@ -922,7 +977,13 @@ function bracketMatch(match, side = '') {
   const mine = Boolean(state.filterOwner) && (
     teamA?.owner === state.filterOwner || teamB?.owner === state.filterOwner
   );
+  const fixture = bracketMatchFixture(match);
+  const live = isBracketMatchLive(match);
+  const showScore = bracketMatchShowsScore(match);
   const number = match.matchNumber ? `<span class="sw-tie__number">M${match.matchNumber}</span>` : '';
+  const liveBadge = live
+    ? `<div class="sw-tie__status">${statusPill('live', bracketLiveLabel(match))}</div>`
+    : '';
   const matchKey = bracketMatchKey(match);
   const pathText = bracketEmptyPath(slotA, slotB, match.homePlaceholder, match.awayPlaceholder);
   const collapsed = state.bracketCollapseEmpty && tbc && !state.bracketExpandedMatches.has(matchKey);
@@ -932,6 +993,7 @@ function bracketMatch(match, side = '') {
     'sw-tie',
     sideClass.trim(),
     tbc ? 'bracket-card--empty sw-tie--tbc' : '',
+    live ? 'sw-tie--live' : '',
     mine ? 'sw-tie--mine' : ''
   ].filter(Boolean).join(' ');
 
@@ -949,8 +1011,9 @@ function bracketMatch(match, side = '') {
 
   return `<div class="${cardClasses}${interactive ? ' bracket-card--expanded-empty' : ''}"${interactiveAttributes}>
     ${number}
-    ${bracketTieSide(slotA, match.homePlaceholder)}
-    ${bracketTieSide(slotB, match.awayPlaceholder)}
+    ${liveBadge}
+    ${bracketTieSide(slotA, match.homePlaceholder, { score: fixture?.homeScore, showScore })}
+    ${bracketTieSide(slotB, match.awayPlaceholder, { score: fixture?.awayScore, showScore })}
   </div>`;
 }
 
@@ -1143,7 +1206,19 @@ function toggleBracketEmptyMatch(matchKey) {
 }
 
 function shouldAutoRefreshFixtures() {
-  return state.screen === 'fixtures' && Boolean(state.data) && !document.hidden;
+  if (!state.data || document.hidden) {
+    return false;
+  }
+
+  if (state.screen === 'fixtures') {
+    return true;
+  }
+
+  if (state.screen === 'bracket') {
+    return hasLiveBracketMatches();
+  }
+
+  return false;
 }
 
 function clearFixtureAutoRefresh() {
