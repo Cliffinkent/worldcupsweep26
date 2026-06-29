@@ -107,7 +107,8 @@ function knockoutFixture({
   awayScore,
   homePenaltyScore = null,
   awayPenaltyScore = null,
-  winner = null
+  winner = null,
+  ...extra
 }) {
   return {
     id,
@@ -121,7 +122,8 @@ function knockoutFixture({
     awayScore,
     homePenaltyScore,
     awayPenaltyScore,
-    winner
+    winner,
+    ...extra
   };
 }
 
@@ -365,5 +367,35 @@ assert.equal(
     .some((check) => check.source === 'W73' && check.expectedCountry === 'South Africa' && check.actualCountry === 'South Africa' && check.passed),
   true
 );
+
+const liveBrazilJapanProjection = buildBracketProjection({
+  groupTables,
+  fixtures: [
+    knockoutFixture({
+      id: 'live-76',
+      round: 'Round of 32',
+      homeTeam: 'Brazil',
+      awayTeam: 'Japan',
+      homeScore: 2,
+      awayScore: 1,
+      status: 'live',
+      isLiveSectionEligible: true,
+      elapsed: 34,
+      statusDetail: '1st Half'
+    })
+  ],
+  rounds: ['Round of 32'],
+  providerStatus: { providerStatus: 'test' },
+  generatedAt: '2026-06-20T00:00:00.000Z'
+});
+const liveBrazilJapanMatch = liveBrazilJapanProjection.roundOf32.find((match) => match.matchNumber === 76);
+
+assert.equal(liveBrazilJapanMatch.slotA.team.country, 'Brazil');
+assert.equal(liveBrazilJapanMatch.slotB.team.country, 'Japan');
+assert.equal(liveBrazilJapanMatch.fixture?.id, 'live-76');
+assert.equal(liveBrazilJapanMatch.fixture?.homeScore, 2);
+assert.equal(liveBrazilJapanMatch.fixture?.awayScore, 1);
+assert.equal(liveBrazilJapanMatch.fixture?.status, 'live');
+assert.equal(liveBrazilJapanMatch.status, 'live');
 
 console.log('bracket projection assertions passed');
