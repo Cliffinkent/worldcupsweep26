@@ -219,6 +219,39 @@ assert.equal(knockoutRows.get('Brazil').reason, 'Lost the World Cup final');
 assert.equal(knockoutRows.has('Mexico'), false);
 assert.equal(knockoutData.pendingThirdPlaceTeams.some((team) => team.country === 'France'), true);
 
+const resolvedSlotProjection = {
+  roundOf32: [
+    {
+      matchNumber: 73,
+      round: 'Round of 32',
+      status: 'finished',
+      winner: 'Canada',
+      homeTeam: { country: 'South Africa' },
+      awayTeam: { country: 'Canada' },
+      slotA: {
+        team: { country: 'South Africa' },
+        resultState: 'confirmed_loser',
+        isLoser: true,
+        isEliminated: true
+      },
+      slotB: {
+        team: { country: 'Canada' },
+        resultState: 'confirmed_winner',
+        isWinner: true
+      }
+    }
+  ]
+};
+const resolvedSlotData = buildEliminationData({
+  bracketProjection: resolvedSlotProjection,
+  generatedAt: '2026-07-04T22:00:00.000Z'
+});
+const resolvedSlotRows = countryRows(resolvedSlotData);
+
+assert.equal(resolvedSlotRows.get('South Africa').source, 'knockout_loss');
+assert.equal(resolvedSlotRows.get('South Africa').eliminatedBy, 'Canada');
+assert.equal(resolvedSlotData.activeTeams.some((team) => team.country === 'South Africa'), false);
+
 const thirdPlaceProjection = {
   laterRounds: [
     {
