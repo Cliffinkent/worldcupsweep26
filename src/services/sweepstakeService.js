@@ -1,6 +1,6 @@
 const sweepstakeTeams = require('../data/sweepstakeTeams');
 const knockoutSlots = require('../data/knockoutSlots');
-const { getBroadcastForFixture } = require('../data/broadcasts');
+const { getBroadcastForFixture, resolveMatchNumber } = require('../data/broadcasts');
 const {
   getWorldCupFixtures,
   getWorldCupStandings,
@@ -64,10 +64,17 @@ function groupFixturesByDate(fixtures) {
 }
 
 function attachBroadcasts(fixtures) {
-  return fixtures.map((fixture) => ({
-    ...fixture,
-    broadcast: getBroadcastForFixture(fixture)
-  }));
+  return fixtures.map((fixture) => {
+    const matchNumber = resolveMatchNumber(fixture);
+    const enriched = matchNumber && !fixture.matchNumber
+      ? { ...fixture, matchNumber }
+      : fixture;
+
+    return {
+      ...enriched,
+      broadcast: getBroadcastForFixture(enriched)
+    };
+  });
 }
 
 function getFixtureRound(fixture) {
