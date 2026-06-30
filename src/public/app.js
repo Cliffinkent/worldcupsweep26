@@ -1013,7 +1013,15 @@ function bracketTieSide(slotOrName, placeholder, { score = null, showScore = fal
     return `<div class="bracket-slot bracket-slot--placeholder sw-tie__team sw-tie__team--tbc" title="${escapeHtml(label)}">${escapeHtml(label)}</div>`;
   }
 
-  const unresolved = slot.unresolvedTie || team.unresolvedTie
+  const tieBreakIsLockedIn = (
+    slot.resultState === 'confirmed_winner' ||
+    slot.resultState === 'confirmed_loser' ||
+    slot.isWinner ||
+    slot.isLoser ||
+    slot.isEliminated ||
+    slot.projectionType === 'confirmed'
+  );
+  const unresolved = !tieBreakIsLockedIn && (slot.unresolvedTie || team.unresolvedTie)
     ? '<span class="sw-tie__tag sw-tie__tag--warn">Tie-break unresolved</span>'
     : '';
   const resultTag = slot.isEliminated
