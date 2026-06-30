@@ -850,7 +850,7 @@ button {
 .sw-fix__score i { font-style: normal; color: var(--muted); }
 .sw-fix__vs { font-family: var(--font-display); font-size: var(--text-xl); color: var(--muted); }
 
-.sw-fix__penalties {
+.sw-fix__result-note {
   grid-column: 1 / -1;
   margin: var(--space-1) 0 0;
   padding-top: var(--space-2);
@@ -861,7 +861,7 @@ button {
   text-align: center;
 }
 
-.sw-fix__penalties i { font-style: normal; }
+.sw-fix__result-note i { font-style: normal; }
 
 .sw-broadcast {
   display: inline-flex;

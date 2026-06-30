@@ -370,7 +370,27 @@ function renderFixturePenaltyNote(match, home, away) {
     return '';
   }
 
-  return `<p class="sw-fix__penalties">${escapeHtml(result.winner)} wins ${result.winnerScore}<i>–</i>${result.loserScore} on penalties</p>`;
+  return `<p class="sw-fix__result-note">${escapeHtml(result.winner)} wins ${result.winnerScore}<i>–</i>${result.loserScore} on penalties</p>`;
+}
+
+function fixtureDecidedInExtraTime(match) {
+  if (!isKnockoutFixture(match) || normaliseFixtureStatus(match.status) !== 'finished') {
+    return false;
+  }
+
+  return String(match.rawStatus || '').toUpperCase() === 'AET';
+}
+
+function renderFixtureExtraTimeNote(match) {
+  if (!fixtureDecidedInExtraTime(match)) {
+    return '';
+  }
+
+  return '<p class="sw-fix__result-note">A.E.T</p>';
+}
+
+function renderFixtureResultNote(match, home, away) {
+  return renderFixturePenaltyNote(match, home, away) || renderFixtureExtraTimeNote(match);
 }
 
 /* Single memoised pass over the fixtures tree (keyed on the loaded payload)
@@ -652,7 +672,7 @@ function fixtureRow(match, fallbackDate) {
     pill = statusPill('scheduled', statusDetail, false);
   }
   const broadcast = renderBroadcast(match.broadcast);
-  const penaltyNote = renderFixturePenaltyNote(match, home, away);
+  const resultNote = renderFixtureResultNote(match, home, away);
 
   return `<div class="sw-fix${live ? ' sw-fix--live' : ''}" data-fixture-id="${escapeHtml(fixtureId)}" data-fixture-date="${escapeHtml(fixtureDate)}" data-fixture-utc-date="${escapeHtml(fixtureUtcDate)}" data-fixture-status="${escapeHtml(status)}" data-fixture-live-section-eligible="${live ? 'true' : 'false'}">
     <div class="sw-fix__side sw-fix__side--home">
@@ -666,7 +686,7 @@ function fixtureRow(match, fallbackDate) {
       <span class="sw-fix__team">${escapeHtml(away.country)}</span>
       <span class="sw-fix__owner">${escapeHtml(away.owner || 'Unassigned')}</span>
     </div>
-    ${penaltyNote}
+    ${resultNote}
   </div>`;
 }
 
