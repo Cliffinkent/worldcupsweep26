@@ -132,6 +132,19 @@ function normaliseFixtureStatus(status) {
   return 'unknown';
 }
 
+const KNOCKOUT_ROUNDS = new Set([
+  'Round of 32',
+  'Round of 16',
+  'Quarter-finals',
+  'Semi-finals',
+  'Third-place play-off',
+  'Final'
+]);
+
+function isKnockoutFixture(match) {
+  return KNOCKOUT_ROUNDS.has(match?.round);
+}
+
 function fixtureDateValue(match, fallbackDate) {
   return match?.utcDate || match?.date || fallbackDate || '';
 }
@@ -294,6 +307,70 @@ function getFixtureTeam(apiName) {
     iso: team?.iso || null,
     owner: team?.owner || ''
   };
+}
+
+function fixturePenaltyResult(match, home, away) {
+  if (!isKnockoutFixture(match) || normaliseFixtureStatus(match.status) !== 'finished') {
+    return null;
+  }
+
+  const homePenaltyScore = Number(match.homePenaltyScore);
+  const awayPenaltyScore = Number(match.awayPenaltyScore);
+
+  if (!Number.isFinite(homePenaltyScore) || !Number.isFinite(awayPenaltyScore)) {
+    return null;
+  }
+
+  const rawStatus = String(match.rawStatus || '').toUpperCase();
+  const homeScore = Number(match.homeScore);
+  const awayScore = Number(match.awayScore);
+  const decidedOnPenalties = rawStatus === 'PEN'
+    || (Number.isFinite(homeScore)
+      && Number.isFinite(awayScore)
+      && homeScore === awayScore
+      && homePenaltyScore !== awayPenaltyScore);
+
+  if (!decidedOnPenalties) {
+    return null;
+  }
+
+  let winner = null;
+  let winnerScore = null;
+  let loserScore = null;
+
+  if (homePenaltyScore > awayPenaltyScore) {
+    winner = home;
+    winnerScore = homePenaltyScore;
+    loserScore = awayPenaltyScore;
+  } else if (awayPenaltyScore > homePenaltyScore) {
+    winner = away;
+    winnerScore = awayPenaltyScore;
+    loserScore = homePenaltyScore;
+  } else if (match.winner) {
+    winner = getFixtureTeam(match.winner);
+    winnerScore = homePenaltyScore;
+    loserScore = awayPenaltyScore;
+  }
+
+  if (!winner?.country || winnerScore === null || loserScore === null) {
+    return null;
+  }
+
+  return {
+    winner: winner.country,
+    winnerScore,
+    loserScore
+  };
+}
+
+function renderFixturePenaltyNote(match, home, away) {
+  const result = fixturePenaltyResult(match, home, away);
+
+  if (!result) {
+    return '';
+  }
+
+  return `<p class="sw-fix__penalties">${escapeHtml(result.winner)} wins ${result.winnerScore}<i>–</i>${result.loserScore} on penalties</p>`;
 }
 
 /* Single memoised pass over the fixtures tree (keyed on the loaded payload)
@@ -575,6 +652,7 @@ function fixtureRow(match, fallbackDate) {
     pill = statusPill('scheduled', statusDetail, false);
   }
   const broadcast = renderBroadcast(match.broadcast);
+  const penaltyNote = renderFixturePenaltyNote(match, home, away);
 
   return `<div class="sw-fix${live ? ' sw-fix--live' : ''}" data-fixture-id="${escapeHtml(fixtureId)}" data-fixture-date="${escapeHtml(fixtureDate)}" data-fixture-utc-date="${escapeHtml(fixtureUtcDate)}" data-fixture-status="${escapeHtml(status)}" data-fixture-live-section-eligible="${live ? 'true' : 'false'}">
     <div class="sw-fix__side sw-fix__side--home">
@@ -588,6 +666,7 @@ function fixtureRow(match, fallbackDate) {
       <span class="sw-fix__team">${escapeHtml(away.country)}</span>
       <span class="sw-fix__owner">${escapeHtml(away.owner || 'Unassigned')}</span>
     </div>
+    ${penaltyNote}
   </div>`;
 }
 
