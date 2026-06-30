@@ -193,6 +193,20 @@ assert.equal(projection.annexCKey, QUALIFYING_THIRD_PLACE_GROUPS);
 assert.equal(projection.annexCMappingStatus, 'mapped');
 assert.equal(czechiaThirdPlaceSlot.team.country, 'Czechia');
 
+const confirmedBracketSlots = projection.roundOf32.flatMap((match) => [match.slotA, match.slotB]);
+assert.equal(projection.projectionStatus, 'confirmed');
+assert.equal(
+  confirmedBracketSlots.every((slot) => !slot.unresolvedTie && !slot.team?.unresolvedTie),
+  true,
+  'confirmed group-stage projections should not surface unresolved tie-break warnings in the bracket'
+);
+assert.equal(qualification.unresolvedTies.length, 0);
+assert.equal(
+  watch.globalThirdPlaceTable.every((row) => !row.unresolvedTie),
+  true,
+  'confirmed third-place rankings should not keep unresolved tie-break flags'
+);
+
 assert.equal(watch.globalThirdPlaceTable.length, 12);
 assert.equal(watch.groupings.length, 8);
 assert.equal(watch.groupings.every((grouping) => grouping.rows.length === 5), true);

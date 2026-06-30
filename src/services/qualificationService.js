@@ -90,7 +90,7 @@ function toProjectedTeam(row, group, groupPosition, groupMatchCount, projectionS
     teamConductScore: fairPlayScore,
     fifaRanking,
     provisional: groupMatchCount === 0,
-    unresolvedTie: Boolean(row.unresolvedTie),
+    unresolvedTie: projectionStatus === 'confirmed' ? false : Boolean(row.unresolvedTie),
     projectionType: projectionStatus === 'confirmed' ? 'confirmed' : 'as_it_stands'
   };
 }
@@ -233,11 +233,19 @@ function byGroup(teams) {
   }, {});
 }
 
+function clearUnresolvedTie(team) {
+  if (!team || !team.unresolvedTie) {
+    return team;
+  }
+
+  return { ...team, unresolvedTie: false };
+}
+
 function buildQualificationProjection(groupTables = []) {
   const projectionStatus = getProjectionStatus(groupTables);
   const tablesByGroup = new Map(groupTables.map((groupTable) => [groupTable.group, groupTable]));
-  const groupWinners = [];
-  const groupRunnersUp = [];
+  let groupWinners = [];
+  let groupRunnersUp = [];
   const thirdPlacedTeams = [];
 
   GROUPS.forEach((group) => {
@@ -262,7 +270,7 @@ function buildQualificationProjection(groupTables = []) {
   });
 
   const thirdPlaceRanking = rankThirdPlacedTeams(thirdPlacedTeams);
-  const thirdPlacedTeamsRanked = thirdPlaceRanking.ranked;
+  let thirdPlacedTeamsRanked = thirdPlaceRanking.ranked;
   const qualifyingThirdPlacedTeams = thirdPlacedTeamsRanked.slice(0, 8);
   const thirdPlaceGroupsProjectedToQualify = qualifyingThirdPlacedTeams
     .map((team) => team.group)
@@ -270,6 +278,12 @@ function buildQualificationProjection(groupTables = []) {
   const annexCKey = thirdPlaceGroupsProjectedToQualify.length === 8
     ? thirdPlaceGroupsProjectedToQualify.join(',')
     : null;
+
+  if (projectionStatus === 'confirmed') {
+    groupWinners = groupWinners.map(clearUnresolvedTie);
+    groupRunnersUp = groupRunnersUp.map(clearUnresolvedTie);
+    thirdPlacedTeamsRanked = thirdPlacedTeamsRanked.map(clearUnresolvedTie);
+  }
 
   return {
     projectionStatus,
@@ -281,11 +295,13 @@ function buildQualificationProjection(groupTables = []) {
     thirdPlacedByGroup: byGroup(thirdPlacedTeamsRanked),
     thirdPlaceGroupsProjectedToQualify,
     annexCKey,
-    unresolvedTies: thirdPlaceRanking.unresolvedTies,
-    warnings: thirdPlaceRanking.warnings,
-    thirdPlaceProjectionWarning: thirdPlaceRanking.warnings.includes(THIRD_PLACE_PROJECTION_WARNING)
-      ? THIRD_PLACE_PROJECTION_WARNING
-      : null
+    unresolvedTies: projectionStatus === 'confirmed' ? [] : thirdPlaceRanking.unresolvedTies,
+    warnings: projectionStatus === 'confirmed' ? [] : thirdPlaceRanking.warnings,
+    thirdPlaceProjectionWarning: projectionStatus === 'confirmed'
+      ? null
+      : (thirdPlaceRanking.warnings.includes(THIRD_PLACE_PROJECTION_WARNING)
+        ? THIRD_PLACE_PROJECTION_WARNING
+        : null)
   };
 }
 

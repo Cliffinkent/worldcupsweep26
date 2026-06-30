@@ -153,6 +153,23 @@ function sourceMatchNumber(source) {
   return match ? Number(match[1]) : null;
 }
 
+function slotResultIsConfirmed({
+  projectionType = null,
+  resultState = null,
+  isWinner = false,
+  isLoser = false,
+  isEliminated = false
+} = {}) {
+  return (
+    projectionType === 'confirmed' ||
+    resultState === 'confirmed_winner' ||
+    resultState === 'confirmed_loser' ||
+    isWinner ||
+    isLoser ||
+    isEliminated
+  );
+}
+
 function createSlot({
   label,
   source,
@@ -168,16 +185,25 @@ function createSlot({
   resolvedFromMatch = null
 }) {
   const bracketTeam = cloneTeam(team);
+  const resolvedProjectionType = projectionType || bracketTeam?.projectionType || null;
+  const resolvedResultState = resultState || (bracketTeam ? 'projected' : 'placeholder');
+  const confirmed = slotResultIsConfirmed({
+    projectionType: resolvedProjectionType,
+    resultState: resolvedResultState,
+    isWinner,
+    isLoser,
+    isEliminated
+  });
 
   return {
     label,
     source: source || sourceCodeFromLabel(label),
-    team: bracketTeam,
-    projectionType: projectionType || bracketTeam?.projectionType || null,
+    team: confirmed && bracketTeam ? { ...bracketTeam, unresolvedTie: false } : bracketTeam,
+    projectionType: resolvedProjectionType,
     provisional: Boolean(provisional || bracketTeam?.provisional),
-    unresolvedTie: Boolean(unresolvedTie || bracketTeam?.unresolvedTie),
+    unresolvedTie: confirmed ? false : Boolean(unresolvedTie || bracketTeam?.unresolvedTie),
     placeholder: placeholder || label,
-    resultState: resultState || (bracketTeam ? 'projected' : 'placeholder'),
+    resultState: resolvedResultState,
     isWinner: Boolean(isWinner),
     isLoser: Boolean(isLoser),
     isEliminated: Boolean(isEliminated),
