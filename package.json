@@ -12,7 +12,7 @@
     "dev": "node --watch-path=server.js --watch-path=src server.js",
     "manual:generate-departure-scene": "node scripts/manual-generate-departure-scene.js",
     "smoke:departure-scene": "node scripts/smoke-vercel-departure-scene.js",
-    "test": "node scripts/assert-table-calculation.js && node scripts/assert-bracket-projection.js && node scripts/assert-eliminations.js && node scripts/assert-broadcasts.js",
+    "test": "node scripts/assert-table-calculation.js && node scripts/assert-bracket-projection.js && node scripts/assert-eliminations.js && node scripts/assert-broadcasts.js && node scripts/assert-final-fixture.js",
     "start": "node server.js"
   },
   "engines": {
