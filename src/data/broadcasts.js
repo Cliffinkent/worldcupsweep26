@@ -219,6 +219,7 @@ const groupStageBroadcasts = [
 ];
 
 const knockoutBroadcasts = [
+  // Round of 32
   ['2026-06-28', 'South Africa', 'Canada', 'itv'],
   ['2026-06-29', 'Brazil', 'Japan', 'itv'],
   ['2026-06-29', 'Germany', 'Paraguay', 'bbc'],
@@ -234,10 +235,28 @@ const knockoutBroadcasts = [
   ['2026-07-03', 'Switzerland', 'Algeria', 'bbc'],
   ['2026-07-03', 'Australia', 'Egypt', 'bbc'],
   ['2026-07-03', 'Argentina', 'Cape Verde', 'itv'],
-  ['2026-07-04', 'Colombia', 'Ghana', 'itv']
+  ['2026-07-04', 'Colombia', 'Ghana', 'itv'],
+  // Round of 16
+  ['2026-07-04', 'Canada', 'Morocco', 'itv'],
+  ['2026-07-04', 'Paraguay', 'France', 'bbc'],
+  ['2026-07-05', 'Brazil', 'Norway', 'itv'],
+  ['2026-07-06', 'Mexico', 'England', 'bbc'],
+  ['2026-07-06', 'Portugal', 'Spain', 'bbc'],
+  ['2026-07-07', 'United States', 'Belgium', 'bbc'],
+  ['2026-07-07', 'Argentina', 'Egypt', 'itv'],
+  ['2026-07-07', 'Switzerland', 'Colombia', 'itv'],
+  // Quarter-finals
+  ['2026-07-09', 'France', 'Morocco', 'itv'],
+  ['2026-07-10', 'Spain', 'Belgium', 'bbc'],
+  ['2026-07-11', 'Norway', 'England', 'itv'],
+  ['2026-07-12', 'Argentina', 'Switzerland', 'itv'],
+  // Semi-finals
+  ['2026-07-14', 'France', 'Spain', 'itv'],
+  ['2026-07-15', 'England', 'Argentina', 'bbc']
 ];
 
 const knockoutBroadcastsByMatchNumber = new Map([
+  // Round of 32
   [73, 'itv'],
   [74, 'bbc'],
   [75, 'itv'],
@@ -254,6 +273,25 @@ const knockoutBroadcastsByMatchNumber = new Map([
   [86, 'itv'],
   [87, 'itv'],
   [88, 'bbc'],
+  // Round of 16
+  [89, 'bbc'],
+  [90, 'itv'],
+  [91, 'itv'],
+  [92, 'bbc'],
+  [93, 'bbc'],
+  [94, 'bbc'],
+  [95, 'itv'],
+  [96, 'itv'],
+  // Quarter-finals
+  [97, 'itv'],
+  [98, 'bbc'],
+  [99, 'itv'],
+  [100, 'itv'],
+  // Semi-finals
+  [101, 'itv'],
+  [102, 'bbc'],
+  // Third-place play-off + Final
+  [103, 'bbc'],
   [104, 'bbc']
 ]);
 
