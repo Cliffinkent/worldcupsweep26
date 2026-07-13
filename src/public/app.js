@@ -635,9 +635,35 @@ function screenGroups() {
   return `${sectionHead('Group stage', 'Top two qualify · highlighted')}<div class="sw-groups">${tables}</div>`;
 }
 
+function fixtureSideLabel(team, placeholder) {
+  if (team?.id) {
+    return team.country || team.name || 'TBC';
+  }
+
+  if (placeholder) {
+    return placeholder;
+  }
+
+  return team?.country || team?.name || 'TBC';
+}
+
+function fixtureSideOwner(team, isPlaceholder) {
+  if (isPlaceholder && !team?.id) {
+    return '';
+  }
+
+  return team?.owner || 'Unassigned';
+}
+
 function fixtureRow(match, fallbackDate) {
   const home = getFixtureTeam(match.homeTeam);
   const away = getFixtureTeam(match.awayTeam);
+  const isPlaceholder = Boolean(match.isPlaceholder)
+    || ((!home.id && Boolean(match.homePlaceholder)) && (!away.id && Boolean(match.awayPlaceholder)));
+  const homeLabel = fixtureSideLabel(home, match.homePlaceholder);
+  const awayLabel = fixtureSideLabel(away, match.awayPlaceholder);
+  const homeOwner = fixtureSideOwner(home, isPlaceholder);
+  const awayOwner = fixtureSideOwner(away, isPlaceholder);
   const status = normaliseFixtureStatus(match.status);
   const live = isFixtureLiveSectionEligible(match);
   const finished = status === 'finished';
@@ -673,18 +699,23 @@ function fixtureRow(match, fallbackDate) {
   }
   const broadcast = renderBroadcast(match.broadcast);
   const resultNote = renderFixtureResultNote(match, home, away);
+  const rowClass = [
+    'sw-fix',
+    live ? 'sw-fix--live' : '',
+    isPlaceholder ? 'sw-fix--placeholder' : ''
+  ].filter(Boolean).join(' ');
 
-  return `<div class="sw-fix${live ? ' sw-fix--live' : ''}" data-fixture-id="${escapeHtml(fixtureId)}" data-fixture-date="${escapeHtml(fixtureDate)}" data-fixture-utc-date="${escapeHtml(fixtureUtcDate)}" data-fixture-status="${escapeHtml(status)}" data-fixture-live-section-eligible="${live ? 'true' : 'false'}">
+  return `<div class="${rowClass}" data-fixture-id="${escapeHtml(fixtureId)}" data-fixture-date="${escapeHtml(fixtureDate)}" data-fixture-utc-date="${escapeHtml(fixtureUtcDate)}" data-fixture-status="${escapeHtml(status)}" data-fixture-live-section-eligible="${live ? 'true' : 'false'}">
     <div class="sw-fix__side sw-fix__side--home">
-      <span class="sw-fix__owner">${escapeHtml(home.owner || 'Unassigned')}</span>
-      <span class="sw-fix__team">${escapeHtml(home.country)}</span>
-      ${renderFlag(home, 34)}
+      ${homeOwner ? `<span class="sw-fix__owner">${escapeHtml(homeOwner)}</span>` : ''}
+      <span class="sw-fix__team">${escapeHtml(homeLabel)}</span>
+      ${isPlaceholder && !home.id ? '' : renderFlag(home, 34)}
     </div>
     <div class="sw-fix__center">${centre}${pill}${broadcast}</div>
     <div class="sw-fix__side sw-fix__side--away">
-      ${renderFlag(away, 34)}
-      <span class="sw-fix__team">${escapeHtml(away.country)}</span>
-      <span class="sw-fix__owner">${escapeHtml(away.owner || 'Unassigned')}</span>
+      ${isPlaceholder && !away.id ? '' : renderFlag(away, 34)}
+      <span class="sw-fix__team">${escapeHtml(awayLabel)}</span>
+      ${awayOwner ? `<span class="sw-fix__owner">${escapeHtml(awayOwner)}</span>` : ''}
     </div>
     ${resultNote}
   </div>`;

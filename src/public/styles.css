@@ -826,6 +826,16 @@ button {
 
 .sw-fix--live { border-color: var(--magenta); box-shadow: inset 3px 0 0 var(--magenta); }
 
+.sw-fix--placeholder {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--surface-card) 88%, var(--paper));
+}
+
+.sw-fix--placeholder .sw-fix__team {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
 .sw-fix.sw-jump-highlight {
   background: var(--yellow-tint);
   border-color: var(--yellow-dark);
