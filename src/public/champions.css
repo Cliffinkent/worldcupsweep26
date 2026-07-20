@@ -1,0 +1,542 @@
+.champions-page {
+  --spain-red: #aa151b;
+  --spain-red-dark: #690008;
+  --spain-gold: #f1bf00;
+  background: #09090c;
+  color: var(--paper);
+}
+
+.champions-nav {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: 24px clamp(20px, 4vw, 64px);
+}
+
+.champions-nav a {
+  color: var(--paper);
+  text-decoration: none;
+}
+
+.champions-nav__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.champions-nav__brand img {
+  display: block;
+}
+
+.champions-nav__brand span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.champions-nav__brand strong {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.champions-nav__brand small {
+  margin-top: 4px;
+  color: var(--spain-gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.champions-nav__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-pill);
+  background: rgba(10, 10, 14, 0.28);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+}
+
+.champions-nav__back:hover {
+  border-color: var(--spain-gold);
+  color: var(--spain-gold);
+}
+
+.champions-nav__back svg {
+  width: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.champions-hero {
+  position: relative;
+  min-height: 100svh;
+  isolation: isolate;
+  overflow: hidden;
+  background: #09090c;
+}
+
+.champions-hero__image,
+.champions-hero__veil {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.champions-hero__image {
+  z-index: -3;
+  object-fit: cover;
+  object-position: 62% center;
+  animation: champions-reveal 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.champions-hero__veil {
+  z-index: -2;
+  background:
+    linear-gradient(90deg, rgba(8, 8, 12, 0.95) 0%, rgba(8, 8, 12, 0.72) 36%, rgba(8, 8, 12, 0.06) 72%),
+    linear-gradient(180deg, rgba(8, 8, 12, 0.72) 0%, transparent 28%, transparent 68%, rgba(8, 8, 12, 0.92) 100%);
+}
+
+.champions-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 5px;
+  background: linear-gradient(90deg, var(--spain-red) 0 33%, var(--spain-gold) 33% 67%, var(--spain-red) 67%);
+}
+
+.champions-confetti {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.65;
+  pointer-events: none;
+  background-image:
+    linear-gradient(112deg, transparent 48%, var(--spain-gold) 49% 52%, transparent 53%),
+    linear-gradient(78deg, transparent 48%, #fff 49% 51%, transparent 52%),
+    linear-gradient(102deg, transparent 48%, #d31327 49% 52%, transparent 53%);
+  background-size: 87px 91px, 121px 132px, 157px 143px;
+  mask-image: linear-gradient(90deg, #000, transparent 65%);
+}
+
+.champions-hero__content {
+  width: min(1440px, 100%);
+  min-height: 100svh;
+  margin-inline: auto;
+  padding: clamp(140px, 18vh, 210px) clamp(20px, 6vw, 88px) 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.champions-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  color: var(--spain-gold);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  animation: champions-rise 0.7s 0.2s both;
+}
+
+.champions-kicker img,
+.champions-score img {
+  display: block;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  object-fit: cover;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.champions-hero h1 {
+  margin: 0;
+  max-width: 8.5ch;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(5.2rem, 12vw, 11.5rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 0.75;
+  text-transform: uppercase;
+  text-shadow: 0 4px 40px rgba(0, 0, 0, 0.55);
+  animation: champions-rise 0.8s 0.32s both;
+}
+
+.champions-hero h1 span {
+  display: block;
+  margin-bottom: 0.14em;
+  color: var(--spain-gold);
+  font-family: var(--font-body);
+  font-size: 0.13em;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}
+
+.champions-hero__lede {
+  max-width: 36ch;
+  margin: 30px 0 32px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: clamp(1rem, 1.6vw, 1.35rem);
+  text-wrap: balance;
+  animation: champions-rise 0.8s 0.45s both;
+}
+
+.champions-score {
+  display: grid;
+  grid-template-columns: minmax(100px, auto) auto minmax(100px, auto);
+  align-items: center;
+  gap: 14px 22px;
+  padding: 16px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: 4px solid var(--spain-gold);
+  background: rgba(8, 8, 12, 0.56);
+  backdrop-filter: blur(14px);
+  animation: champions-rise 0.8s 0.56s both;
+}
+
+.champions-score__team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.champions-score__team--away {
+  justify-content: flex-end;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.champions-score > strong {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.champions-score > strong span {
+  color: var(--spain-gold);
+}
+
+.champions-score > small {
+  grid-column: 1 / -1;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.champions-hero__scroll {
+  position: absolute;
+  right: clamp(20px, 4vw, 64px);
+  bottom: 32px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.champions-hero__scroll svg {
+  width: 20px;
+  fill: none;
+  stroke: var(--spain-gold);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  animation: champions-bounce 1.8s ease-in-out infinite;
+}
+
+.champions-story {
+  position: relative;
+  display: grid;
+  grid-template-columns: 0.65fr 1.3fr 1fr;
+  gap: clamp(30px, 6vw, 90px);
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: clamp(80px, 10vw, 150px) clamp(20px, 5vw, 72px);
+  overflow: hidden;
+}
+
+.champions-story__number {
+  color: var(--spain-gold);
+  font-family: var(--font-display);
+  font-size: clamp(7rem, 14vw, 12rem);
+  line-height: 0.72;
+  opacity: 0.18;
+}
+
+.champions-eyebrow {
+  color: var(--spain-gold);
+  font-size: var(--text-2xs);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.champions-story h2 {
+  margin: 14px 0 24px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 5vw, 5.5rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.champions-story__copy p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.67);
+  font-size: var(--text-lg);
+  line-height: 1.65;
+}
+
+.champions-story blockquote {
+  align-self: end;
+  margin: 0;
+  padding: 30px 0 6px 30px;
+  border-left: 2px solid var(--spain-red);
+}
+
+.champions-story blockquote p {
+  margin: 0 0 18px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.champions-story blockquote footer {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: var(--text-xs);
+}
+
+.champions-banner {
+  position: relative;
+  padding: clamp(80px, 12vw, 150px) 20px;
+  overflow: hidden;
+  background: var(--spain-red);
+  text-align: center;
+}
+
+.champions-banner::before {
+  content: "ESPAÑA";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  color: transparent;
+  font-family: var(--font-display);
+  font-size: clamp(10rem, 28vw, 28rem);
+  line-height: 1;
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.08);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.champions-banner p,
+.champions-banner h2 {
+  position: relative;
+}
+
+.champions-banner p {
+  margin: 0 0 10px;
+  color: var(--spain-gold);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.champions-banner h2 {
+  margin: 0;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 10vw, 9rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 0.86;
+  text-transform: uppercase;
+}
+
+.champions-banner__flags {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 40px;
+}
+
+.champions-banner__flags span {
+  width: 44px;
+  height: 6px;
+  background: var(--spain-gold);
+}
+
+.champions-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px clamp(20px, 5vw, 72px);
+  color: rgba(255, 255, 255, 0.48);
+  font-size: var(--text-2xs);
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+@keyframes champions-reveal {
+  from { opacity: 0; transform: scale(1.06); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes champions-rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes champions-bounce {
+  0%, 100% { transform: translateY(-3px); }
+  50% { transform: translateY(4px); }
+}
+
+@media (max-width: 800px) {
+  .champions-nav {
+    padding-top: 18px;
+  }
+
+  .champions-nav__brand span {
+    display: none;
+  }
+
+  .champions-nav__back {
+    font-size: 9px;
+  }
+
+  .champions-hero {
+    min-height: 860px;
+  }
+
+  .champions-hero__image {
+    object-position: 67% center;
+  }
+
+  .champions-hero__veil {
+    background:
+      linear-gradient(180deg, rgba(8, 8, 12, 0.7), rgba(8, 8, 12, 0.18) 30%, rgba(8, 8, 12, 0.92) 69%, #08080c 100%),
+      linear-gradient(90deg, rgba(8, 8, 12, 0.25), transparent);
+  }
+
+  .champions-hero__content {
+    min-height: 860px;
+    justify-content: flex-end;
+    padding-bottom: 92px;
+  }
+
+  .champions-hero h1 {
+    font-size: clamp(4.9rem, 23vw, 7.4rem);
+  }
+
+  .champions-kicker {
+    margin-bottom: 16px;
+  }
+
+  .champions-hero__lede {
+    margin-block: 22px;
+  }
+
+  .champions-score {
+    width: 100%;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    padding-inline: 14px;
+  }
+
+  .champions-score__team {
+    gap: 7px;
+    font-size: 11px;
+  }
+
+  .champions-score__team--away span {
+    order: 2;
+  }
+
+  .champions-score__team--away img {
+    order: 1;
+  }
+
+  .champions-score__team--away {
+    justify-content: flex-start;
+  }
+
+  .champions-score img {
+    width: 28px;
+    height: 21px;
+  }
+
+  .champions-hero__scroll {
+    display: none;
+  }
+
+  .champions-story {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+
+  .champions-story__number {
+    position: absolute;
+    top: 80px;
+    right: 20px;
+  }
+
+  .champions-story blockquote {
+    padding-top: 8px;
+  }
+
+  .champions-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .champions-hero__image,
+  .champions-kicker,
+  .champions-hero h1,
+  .champions-hero__lede,
+  .champions-score,
+  .champions-hero__scroll svg {
+    animation: none;
+  }
+}
