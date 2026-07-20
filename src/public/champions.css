@@ -449,12 +449,17 @@
   }
 
   .champions-hero__image {
-    object-position: 67% center;
+    inset: 64px auto auto -10%;
+    width: 120%;
+    height: auto;
+    max-width: none;
+    object-fit: contain;
+    object-position: center top;
   }
 
   .champions-hero__veil {
     background:
-      linear-gradient(180deg, rgba(8, 8, 12, 0.7), rgba(8, 8, 12, 0.18) 30%, rgba(8, 8, 12, 0.92) 69%, #08080c 100%),
+      linear-gradient(180deg, rgba(8, 8, 12, 0.58), rgba(8, 8, 12, 0.08) 26%, rgba(8, 8, 12, 0.35) 43%, rgba(8, 8, 12, 0.96) 58%, #08080c 100%),
       linear-gradient(90deg, rgba(8, 8, 12, 0.25), transparent);
   }
 
